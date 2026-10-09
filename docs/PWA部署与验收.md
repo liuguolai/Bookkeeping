@@ -18,6 +18,22 @@ Windows 生成部署 ZIP 可运行 `./scripts/package-pwa.ps1`（会先重新构
 
 ## 静态托管
 
+### Cloudflare Workers（当前部署方式）
+
+GitHub 仓库选 `liuguolai/Bookkeeping`，生产分支 `main`，根目录 `/`，构建命令 `npm run build`，构建环境变量 `NODE_VERSION=22`。部署命令使用：
+
+```text
+npx wrangler deploy --assets ./dist --name pocket-ledger
+```
+
+仓库根目录的 `wrangler.jsonc` 指定项目名称、静态资源目录和 `compatibility_date`。兼容日期固定为 `2026-10-06`，与当前部署工具支持的日期一致；它是 Workers 运行时兼容规则的基准，不是应用到期日期。无需在控制台的部署命令中重复填写日期。暂时关闭 Preview builds，日常使用正式部署地址。
+
+依赖安装、网页构建、上传部署是三个独立阶段。`Build command completed` 仅代表网页已构建；还需等待部署成功并实际打开 HTTPS 网址。修改 GitHub `main` 后查看最新提交的部署，不要反复重试旧提交。
+
+参考：[Cloudflare 兼容日期](https://developers.cloudflare.com/workers/configuration/compatibility-dates/)。
+
+### Pages、Netlify 等静态托管
+
 构建命令：`npm run build`；输出目录：`dist`；无需环境变量、数据库或服务器函数。部署包 `artifacts/pocket-ledger-0.1.9-pwa.zip` 的顶层就是站点文件，解压后上传全部内容，不要再多套一层 dist。
 
 Cloudflare Pages、Netlify 等静态平台可使用上述构建配置，也可上传构建文件。选择平台时先确认自己的网络能稳定访问其默认域名。可先用平台提供的 HTTPS 地址，不要求购买自定义域名。平台的免费额度和服务条件以其当前规则为准。
