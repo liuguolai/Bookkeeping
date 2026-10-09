@@ -1,0 +1,35 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+.local/
+*.log
+android/.gradle/
+android/local.properties
+android/**/build/
+ios/App/Pods/
+ios/App/build/
+.DS_Store
+
+test-results-pwa/
+
+# Local credentials, signing material and personal ledger exports
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.p8
+*.pem
+*.key
+*.pocket
+*.sqlite
+*.sqlite3
+*.db
+
+# Keep only the current Android deliverable; old builds remain local
+artifacts/*.apk
+artifacts/*.apk.sha256
+!artifacts/pocket-ledger-0.1.8-debug.apk
+!artifacts/pocket-ledger-0.1.8-debug.apk.sha256

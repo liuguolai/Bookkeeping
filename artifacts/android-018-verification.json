@@ -1,0 +1,15 @@
+{
+  "version": "0.1.8",
+  "upgradeFrom": "0.1.7",
+  "oldEntriesPreserved": 20,
+  "oldTemplatesPreserved": 2,
+  "upgradeSnapshotCreated": true,
+  "selectedMonth": "2026-10",
+  "expectedCnyNetMinor": 8410,
+  "comparisonMatchesDatabase": true,
+  "currencySwitchIsolated": true,
+  "budgetNavigation": true,
+  "coldRestartPersistence": true,
+  "apkAssetsMatchDist": true,
+  "apkAssetFiles": 9
+}

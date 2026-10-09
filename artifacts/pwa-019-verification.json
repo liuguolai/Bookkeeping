@@ -1,0 +1,23 @@
+{
+  "version": "0.1.9",
+  "build": "8508b387d40b68398fdb",
+  "zipBytes": 187849,
+  "zipSha256": "1904B917296EEDC98A5836AA7470ED9DA762B0AC36C0DD5157E93451DDF5ECC3",
+  "fileCount": 17,
+  "archiveMatchesDist": true,
+  "nativeWebAssetsMatch": {
+    "android": true,
+    "ios": true
+  },
+  "validation": {
+    "typecheckAndBuild": "passed",
+    "coreTests": 94,
+    "existingBrowserCases": 42,
+    "existingBrowserDetails": "38 passed first run; 4 status-locator assertions corrected and passed; 2 recovery cases rerun after adding update panel and passed",
+    "pwaProductionCases": 7,
+    "pwaEngine": "Chromium, iPhone 13 viewport; 320px enlarged text check",
+    "iosRealDevice": "not tested",
+    "publicDeployment": "not deployed",
+    "nativeCompileThisTurn": "not run; web assets synchronized only"
+  }
+}

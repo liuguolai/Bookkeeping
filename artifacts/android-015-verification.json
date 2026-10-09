@@ -1,0 +1,47 @@
+{
+  "version": "0.1.5",
+  "versionCode": 6,
+  "device": "PocketLedgerTest / Pixel 7 / Android 34",
+  "oldEntriesPreserved": 4,
+  "newEntriesSaved": 2,
+  "automaticKeyboard": true,
+  "amountAutoFocus": true,
+  "footerAboveKeyboard": true,
+  "footerTwoRows": true,
+  "backDismissesKeyboardFirst": true,
+  "unsavedConfirmation": true,
+  "saveAndContinue": true,
+  "webViewErrors": [],
+  "layout": {
+    "bottom": 546.0476455688477,
+    "width": 368.19049072265625,
+    "viewBottom": 571.047607421875,
+    "buttons": [
+      {
+        "text": "保存草稿",
+        "y": 442.0476379394531,
+        "width": 180.09524536132812,
+        "height": 48,
+        "overflow": false,
+        "whitespace": "nowrap"
+      },
+      {
+        "text": "保存并继续",
+        "y": 442.0476379394531,
+        "width": 180.09524536132812,
+        "height": 48,
+        "overflow": false,
+        "whitespace": "nowrap"
+      },
+      {
+        "text": "保存记录",
+        "y": 498.0476379394531,
+        "width": 368.19049072265625,
+        "height": 48,
+        "overflow": false,
+        "whitespace": "nowrap"
+      }
+    ]
+  },
+  "coldRestartPersistence": true
+}

@@ -1,0 +1,33 @@
+{
+  "version": "0.1.6",
+  "versionCode": 7,
+  "device": "PocketLedgerTest / Pixel 7 / Android 34",
+  "oldEntriesPreserved": 6,
+  "addedMinorUnits": [
+    3000,
+    30
+  ],
+  "nativeKeyboardRetained": true,
+  "operatorInputAndEquals": true,
+  "footerAboveKeyboard": true,
+  "continuousSave": true,
+  "layout": {
+    "bottom": 546.0476455688477,
+    "viewport": 571.047607421875,
+    "buttons": [
+      {
+        "text": "保存草稿",
+        "overflow": false
+      },
+      {
+        "text": "保存并继续",
+        "overflow": false
+      },
+      {
+        "text": "保存记录",
+        "overflow": false
+      }
+    ]
+  },
+  "coldRestartPersistence": true
+}

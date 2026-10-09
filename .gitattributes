@@ -1,0 +1,2 @@
+# Keep the Gradle launcher usable on macOS and Linux after checkout.
+android/gradlew text eol=lf

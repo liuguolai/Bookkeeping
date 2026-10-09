@@ -1,0 +1,20 @@
+{
+  "version": "0.1.7",
+  "upgradeFrom": "0.1.6",
+  "oldEntriesPreserved": 8,
+  "preMigrationSnapshotVersion": 1,
+  "templateEntryAmount": 500,
+  "templateAmountFocused": true,
+  "nativeRestoreAndUndo": true,
+  "encryptedDatabaseHeader": true,
+  "encryptedFileGenerated": true,
+  "androidShareChooserOpened": true,
+  "nativeBackupPreviewAndRestore": true,
+  "restoreInput": "generated cache file injected into file input; Android picker not tested",
+  "finalBooks": 2,
+  "finalEntries": 20,
+  "finalTemplates": 2,
+  "coldRestartPersistence": true,
+  "apkAssetsMatchDist": true,
+  "apkAssetFiles": 9
+}
