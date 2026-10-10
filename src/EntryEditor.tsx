@@ -1,3 +1,5 @@
+import { t as tr, useLocale } from './i18n';
+import { messageText } from './i18n';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLedger } from './context';
 import { type Book, type Entry, type Draft, type EntryTemplate, localTime, uid } from './model';
@@ -23,6 +25,7 @@ export function EntryEditor({
   template?: EntryTemplate;
   onClose: () => void;
 }) {
+  useLocale();
   const { state, run, confirm, notify } = useLedger();
   const draft =
     !entry && !refund && !repeat && !template
@@ -76,7 +79,7 @@ export function EntryEditor({
     const next = prefix + operator + amount.slice(end);
     input.focus({ preventScroll: true });
     if (next.length > 40) {
-      notify('金额算式最多 40 个字符');
+      notify(tr('金额算式最多 40 个字符'));
       return;
     }
     if (next === amount) {
@@ -170,12 +173,12 @@ export function EntryEditor({
     }
     if (
       await confirm(
-        '离开这笔记录？',
+        tr('离开这笔记录？'),
         entry || refund || repeat || template
-          ? '这笔记录尚未保存，确定放弃本次修改？'
-          : '放弃本次修改将清除这笔新记录的草稿。也可以取消后选择“保存草稿”。',
+          ? tr('这笔记录尚未保存，确定放弃本次修改？')
+          : tr('放弃本次修改将清除这笔新记录的草稿。也可以取消后选择“保存草稿”。'),
         true,
-        '放弃修改',
+        tr('放弃修改'),
       )
     ) {
       clearTimeout(autosaveTimer.current);
@@ -201,7 +204,7 @@ export function EntryEditor({
     if (
       await run((s) => {
         s.drafts = [...s.drafts.filter((d) => d.bookId !== book.id), value];
-      }, '草稿已保存到本机')
+      }, tr('草稿已保存到本机'))
     )
       onClose();
   };
@@ -237,7 +240,7 @@ export function EntryEditor({
         !!entry,
         entry?.updatedAt,
       );
-    }, '已保存到本机');
+    }, tr('已保存到本机'));
     lock.current = false;
     setBusy(false);
     if (ok && keepOpen) {
@@ -253,14 +256,14 @@ export function EntryEditor({
     <Dialog
       title={
         entry
-          ? '编辑记录'
+          ? tr('编辑记录')
           : refund
-            ? '记录退款'
+            ? tr('记录退款')
             : repeat
-              ? '再记一笔'
+              ? tr('再记一笔')
               : template
-                ? '使用模板记账'
-                : '记一笔'
+                ? tr('使用模板记账')
+                : tr('记一笔')
       }
       onClose={close}
       className="entry-dialog"
@@ -269,19 +272,22 @@ export function EntryEditor({
         <div className="editor-fields">
           {template && (
             <p className="dialog-copy">
-              已填入“{template.name}
-              ”，日期为今天；确认后才保存，不影响已有草稿。停用的分类和支付方式已留空，请核对。
+              {tr('已填入“')}
+              {template.name}
+              {tr(
+                '”，日期为今天；确认后才保存，不影响已有草稿。停用的分类和支付方式已留空，请核对。',
+              )}
             </p>
           )}
           {repeat && (
             <p className="dialog-copy">
-              已复制原记录，日期更新为今天。确认后才会保存，不影响已有草稿。
+              {tr('已复制原记录，日期更新为今天。确认后才会保存，不影响已有草稿。')}
             </p>
           )}
           <div className="record-book">
             <Icon name="book" size={16} />
             {book.name}
-            <span>本地账本</span>
+            <span>{tr('本地账本')}</span>
           </div>
           {type !== 'refund' ? (
             <div className="segmented type-tabs">
@@ -296,21 +302,23 @@ export function EntryEditor({
                     setCategory('');
                   }}
                 >
-                  {t === 'expense' ? '支出' : '收入'}
+                  {t === 'expense' ? tr('支出') : tr('收入')}
                 </button>
               ))}
             </div>
           ) : (
             <div className="notice">
               <Icon name="refund" size={18} />
-              退款冲减 {code} 支出，不计入收入
+              {tr('退款冲减 ')}
+              {code}
+              {tr(' 支出，不计入收入')}
             </div>
           )}
           <div className="amount-input">
             <div className="amount-heading">
-              <label htmlFor="entry-amount">金额</label>
+              <label htmlFor="entry-amount">{tr('金额')}</label>
               <select
-                aria-label="记账币种"
+                aria-label={tr('记账币种')}
                 value={code}
                 disabled={!!entry || type === 'refund'}
                 onChange={(e) => {
@@ -321,7 +329,7 @@ export function EntryEditor({
               >
                 {Array.from(new Set([...book.common, ...currencyCodes])).map((c) => (
                   <option key={c} value={c}>
-                    {c} · {CURRENCIES[c].name}
+                    {c}· {tr(CURRENCIES[c].name)}
                   </option>
                 ))}
               </select>
@@ -329,7 +337,7 @@ export function EntryEditor({
             <input
               id="entry-amount"
               ref={amountRef}
-              aria-label="金额"
+              aria-label={tr('金额')}
               aria-describedby="amount-calculation-hint"
               aria-invalid={showAmountError && !!calculation.error}
               inputMode={CURRENCIES[code].precision ? 'decimal' : 'numeric'}
@@ -344,10 +352,10 @@ export function EntryEditor({
               autoFocus
               required
             />
-            <div className="amount-tools" role="group" aria-label="金额加减计算">
+            <div className="amount-tools" role="group" aria-label={tr('金额加减计算')}>
               <button
                 type="button"
-                aria-label="加一项金额"
+                aria-label={tr('加一项金额')}
                 disabled={!amount.trim() || busy}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => insertOperator('+')}
@@ -356,7 +364,7 @@ export function EntryEditor({
               </button>
               <button
                 type="button"
-                aria-label="减一项金额"
+                aria-label={tr('减一项金额')}
                 disabled={!amount.trim() || busy}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => insertOperator('-')}
@@ -365,7 +373,7 @@ export function EntryEditor({
               </button>
               <button
                 type="button"
-                aria-label="计算结果"
+                aria-label={tr('计算结果')}
                 disabled={!amount.trim() || busy}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={applyCalculation}
@@ -382,7 +390,7 @@ export function EntryEditor({
                   amountRef.current?.focus({ preventScroll: true });
                 }}
               >
-                清空
+                {tr('清空')}
               </button>
             </div>
             <p
@@ -391,15 +399,17 @@ export function EntryEditor({
               aria-live="polite"
             >
               {showAmountError && calculation.error
-                ? calculation.error
+                ? messageText(calculation.error)
                 : hasExpression && !calculation.error
-                  ? `合计 ${code} ${calculation.value} · 保存时自动计算`
-                  : '支持加减，如 18+12.5；保存时自动计算'}
+                  ? tr('合计 {0} {1} · 保存时自动计算', [code, calculation.value])
+                  : tr('支持加减，如 18+12.5；保存时自动计算')}
             </p>
           </div>
-          {currencyChanged && <p className="inline-note">已更换币种，金额未换算，请核对。</p>}
+          {currencyChanged && (
+            <p className="inline-note">{tr('已更换币种，金额未换算，请核对。')}</p>
+          )}
           <div className="field">
-            <span>选择分类</span>
+            <span>{tr('选择分类')}</span>
             <div className="category-grid">
               {orderedCategories(
                 state.categories.filter(
@@ -420,7 +430,7 @@ export function EntryEditor({
                   <span>
                     <Icon name={c.icon} />
                   </span>
-                  {c.pinned && <span className="pinned-label">常用</span>}
+                  {c.pinned && <span className="pinned-label">{tr('常用')}</span>}
                   {c.name}
                 </button>
               ))}
@@ -428,10 +438,10 @@ export function EntryEditor({
           </div>
           <div className="form-grid">
             <div>
-              <Label title="发生时间">
+              <Label title={tr('发生时间')}>
                 <input
                   type="datetime-local"
-                  aria-label="发生时间"
+                  aria-label={tr('发生时间')}
                   value={date}
                   max={localTime(book.timezone).slice(0, 10) + 'T23:59'}
                   min="1900-01-01T00:00"
@@ -439,8 +449,8 @@ export function EntryEditor({
                   required
                 />
               </Label>
-              <div className="quick-dates" role="group" aria-label="快捷日期">
-                {['今天', '昨天', '前天'].map((label, index) => (
+              <div className="quick-dates" role="group" aria-label={tr('快捷日期')}>
+                {[tr('今天'), tr('昨天'), tr('前天')].map((label, index) => (
                   <button
                     type="button"
                     key={label}
@@ -454,13 +464,13 @@ export function EntryEditor({
                 ))}
               </div>
             </div>
-            <Label title="支付方式 · 选填">
+            <Label title={tr('支付方式 · 选填')}>
               <select
-                aria-label="支付方式"
+                aria-label={tr('支付方式')}
                 value={payment}
                 onChange={(e) => setPayment(e.target.value)}
               >
-                <option value="">未填写</option>
+                <option value="">{tr('未填写')}</option>
                 {state.payments
                   .filter((p) => p.bookId === book.id && (p.active || p.id === payment))
                   .map((p) => (
@@ -471,32 +481,35 @@ export function EntryEditor({
               </select>
             </Label>
           </div>
-          <Label title="备注 · 选填">
+          <Label title={tr('备注 · 选填')}>
             <input
-              aria-label="备注"
-              placeholder="为这笔记录留一点细节"
+              aria-label={tr('备注')}
+              placeholder={tr('为这笔记录留一点细节')}
               maxLength={200}
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
           </Label>
           {noteOptions.length > 0 && (
-            <div className="note-suggestions" role="group" aria-label="常用备注">
+            <div className="note-suggestions" role="group" aria-label={tr('常用备注')}>
               <div className="note-suggestions-heading">
-                <span>常用备注</span>
-                <small>按使用次数排序，点击填入</small>
+                <span>{tr('常用备注')}</span>
+                <small>{tr('按使用次数排序，点击填入')}</small>
               </div>
               <div className="note-options">
                 {noteOptions.slice(0, noteLimit).map((option) => (
                   <button
                     type="button"
                     key={option.note}
-                    aria-label={`使用备注：${option.note}`}
+                    aria-label={tr('使用备注：{0}', [option.note])}
                     aria-pressed={note === option.note}
                     onClick={() => setNote(option.note)}
                   >
                     <span>{option.note}</span>
-                    <small>{option.count} 次</small>
+                    <small>
+                      {option.count}
+                      {tr(' 次')}
+                    </small>
                   </button>
                 ))}
               </div>
@@ -508,12 +521,12 @@ export function EntryEditor({
                       className="text-button"
                       onClick={() => setNoteLimit((limit) => limit + 6)}
                     >
-                      更多备注
+                      {tr('更多备注')}
                     </button>
                   )}
                   {noteLimit > 6 && (
                     <button type="button" className="text-button" onClick={() => setNoteLimit(6)}>
-                      收起备注
+                      {tr('收起备注')}
                     </button>
                   )}
                 </div>
@@ -524,16 +537,16 @@ export function EntryEditor({
         <div className="actions editor-actions">
           {!entry && !refund && !repeat && !template && (
             <button type="button" className="secondary" onClick={saveDraft} disabled={busy}>
-              保存草稿
+              {tr('保存草稿')}
             </button>
           )}
           {!entry && !refund && (
             <button type="submit" data-continue="true" className="secondary" disabled={busy}>
-              保存并继续
+              {tr('保存并继续')}
             </button>
           )}
           <button className="primary" disabled={busy}>
-            {busy ? '正在保存…' : '保存记录'}
+            {busy ? tr('正在保存…') : tr('保存记录')}
             <Icon name="check" size={18} />
           </button>
         </div>

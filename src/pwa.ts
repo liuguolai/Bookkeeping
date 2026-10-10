@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { useEffect, useSyncExternalStore } from 'react';
 import { Capacitor } from '@capacitor/core';
 type InstallEvent = Event & { prompt(): Promise<void>; userChoice: Promise<{ outcome: string }> };
@@ -34,7 +35,7 @@ function message<T>(worker: ServiceWorker, value: object): Promise<T> {
     const channel = new MessageChannel();
     const timer = setTimeout(() => {
       channel.port1.close();
-      reject(new Error('操作超时，请保持当前页面并稍后重试'));
+      reject(new Error(t('操作超时，请保持当前页面并稍后重试')));
     }, 12000);
     channel.port1.onmessage = (event) => {
       clearTimeout(timer);
@@ -71,7 +72,10 @@ async function registerWorker() {
       const changed = () => {
         if (worker.state === 'installed') set({ update: !!reg.active && !!reg.waiting });
         if (worker.state === 'redundant')
-          set({ update: !!reg.waiting, error: '离线文件准备失败；已有账目保留，请联网重新检查。' });
+          set({
+            update: !!reg.waiting,
+            error: t('离线文件准备失败；已有账目保留，请联网重新检查。'),
+          });
         if (worker.state === 'activated') {
           set({ update: !!reg.waiting, error: '' });
           void offlineStatus();
@@ -86,8 +90,8 @@ async function registerWorker() {
   void navigator.serviceWorker.ready.then(() => offlineStatus());
 }
 export async function checkPwaUpdate() {
-  if (!status.supported) throw new Error(status.error || '离线功能尚未就绪，请联网重新打开');
-  if (!navigator.onLine) throw new Error('当前离线，联网后再检查更新');
+  if (!status.supported) throw new Error(status.error || t('离线功能尚未就绪，请联网重新打开'));
+  if (!navigator.onLine) throw new Error(t('当前离线，联网后再检查更新'));
   // A failed first install can leave a detached registration that cannot update.
   if (!registration || (!registration.active && !registration.waiting && !registration.installing))
     await registerWorker();
@@ -97,7 +101,7 @@ export async function checkPwaUpdate() {
   await offlineStatus();
 }
 export async function activatePwaUpdate() {
-  if (!registration?.waiting) throw new Error('暂无已下载的更新');
+  if (!registration?.waiting) throw new Error(t('暂无已下载的更新'));
   wantsReload = true;
   try {
     const reply = await message<{ activated: boolean; reason?: string }>(registration.waiting, {
@@ -144,11 +148,11 @@ function start() {
     set({ installed: true, installable: false });
   });
   if (!import.meta.env.PROD) {
-    set({ error: '开发预览不启用离线缓存；请使用 PWA 生产预览或正式 HTTPS 网址。' });
+    set({ error: t('开发预览不启用离线缓存；请使用 PWA 生产预览或正式 HTTPS 网址。') });
     return;
   }
   if (!window.isSecureContext || !('serviceWorker' in navigator)) {
-    set({ error: '当前浏览器或网址不支持离线安装，请使用 Safari/Chrome 打开 HTTPS 网址。' });
+    set({ error: t('当前浏览器或网址不支持离线安装，请使用 Safari/Chrome 打开 HTTPS 网址。') });
     return;
   }
   set({ supported: true });
@@ -157,7 +161,7 @@ function start() {
     else void offlineStatus();
   });
   void registerWorker().catch(() =>
-    set({ error: '离线准备失败，请确认网络、存储空间和 HTTPS 配置后重试。' }),
+    set({ error: t('离线准备失败，请确认网络、存储空间和 HTTPS 配置后重试。') }),
   );
   window.addEventListener('focus', () => {
     void offlineStatus();

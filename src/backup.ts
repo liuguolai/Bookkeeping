@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { z } from 'zod';
 import { CURRENCIES, currencyCodes, amountText } from './money';
 import { type State, type Entry, emptyState, validateState, uid } from './model';
@@ -41,7 +42,7 @@ async function key(password: string, salt: Uint8Array<ArrayBuffer>): Promise<Cry
 export function snapshot(s: State, bookIds: string[]): State {
   const selected = new Set(bookIds);
   const books = s.books.filter((b) => selected.has(b.id) && !b.deletedAt);
-  if (!books.length) throw new Error('没有可备份的账本');
+  if (!books.length) throw new Error(t('没有可备份的账本'));
   const allowed = new Set(books.map((b) => b.id));
   return validateState({
     ...emptyState(),
@@ -59,7 +60,8 @@ export async function encryptBackup(
   bookIds: string[],
   password: string,
 ): Promise<string> {
-  if (password.length < 8 || password.length > 200) throw new Error('备份密码需要 8 至 200 个字符');
+  if (password.length < 8 || password.length > 200)
+    throw new Error(t('备份密码需要 8 至 200 个字符'));
   const data = {
     formatVersion: 1,
     createdAt: Date.now(),
@@ -67,7 +69,8 @@ export async function encryptBackup(
     state: snapshot(s, bookIds),
   };
   const plaintext = encoder.encode(JSON.stringify(data));
-  if (plaintext.byteLength > MAX_BACKUP_SIZE * 0.7) throw new Error('备份过大，请按账本分别导出');
+  if (plaintext.byteLength > MAX_BACKUP_SIZE * 0.7)
+    throw new Error(t('备份过大，请按账本分别导出'));
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt(
@@ -91,12 +94,12 @@ export interface BackupPreview {
   fingerprint: string;
 }
 export async function decryptBackup(text: string, password: string): Promise<BackupPreview> {
-  if (text.length > MAX_BACKUP_SIZE) throw new Error('备份文件超过 25 MB');
+  if (text.length > MAX_BACKUP_SIZE) throw new Error(t('备份文件超过 25 MB'));
   let envelope: z.infer<typeof envelopeSchema>;
   try {
     envelope = envelopeSchema.parse(JSON.parse(text));
   } catch {
-    throw new Error('文件格式或版本不支持，请选择口袋账本加密备份');
+    throw new Error(t('文件格式或版本不支持，请选择口袋账本加密备份'));
   }
   let bytes: ArrayBuffer;
   try {
@@ -109,7 +112,7 @@ export async function decryptBackup(text: string, password: string): Promise<Bac
       unb64(envelope.ciphertext),
     );
   } catch {
-    throw new Error('密码错误或备份文件已损坏');
+    throw new Error(t('密码错误或备份文件已损坏'));
   }
   let payload: { createdAt: number; state: State };
   try {
@@ -138,7 +141,7 @@ export async function decryptBackup(text: string, password: string): Promise<Bac
       throw new Error('Unexpected deleted data');
     payload = { createdAt: raw.createdAt, state };
   } catch {
-    throw new Error('备份内容校验失败：币种、金额、日期或关联关系不合法');
+    throw new Error(t('备份内容校验失败：币种、金额、日期或关联关系不合法'));
   }
   const digest = await crypto.subtle.digest('SHA-256', encoder.encode(text));
   return {
@@ -150,10 +153,10 @@ export async function decryptBackup(text: string, password: string): Promise<Bac
 }
 export function restoreBackup(target: State, preview: BackupPreview, allowDuplicate = false) {
   if (target.restored.includes(preview.fingerprint) && !allowDuplicate)
-    throw new Error('这份备份已经恢复过，请明确确认是否另建副本');
+    throw new Error(t('这份备份已经恢复过，请明确确认是否另建副本'));
   const src = validateState(preview.state);
   if (target.books.length + src.books.length > 20)
-    throw new Error('恢复后将超过 20 个账本，请先整理账本');
+    throw new Error(t('恢复后将超过 20 个账本，请先整理账本'));
   const bookMap = new Map(src.books.map((b) => [b.id, uid()]));
   const catMap = new Map(src.categories.map((c) => [c.id, uid()]));
   const paymentMap = new Map(src.payments.map((p) => [p.id, uid()]));
@@ -162,7 +165,7 @@ export function restoreBackup(target: State, preview: BackupPreview, allowDuplic
     let name = b.name,
       n = 1;
     while (target.books.some((other) => other.name === name))
-      name = `${b.name.slice(0, 12)}·副本${n++}`;
+      name = t('{0}·副本{1}', [b.name.slice(0, 12), n++]);
     target.books.push({ ...b, id: bookMap.get(b.id)!, name, updatedAt: Date.now() });
   }
   target.categories.push(
@@ -213,24 +216,24 @@ function csvCell(text: string): string {
 export function exportCsv(s: State, entries: Entry[]): string {
   const rows = [
     [
-      '流水标识',
-      '账本',
-      '类型',
-      '发生时间',
-      '时区',
-      '金额',
-      '币种',
-      '分类',
-      '支付方式',
-      '备注',
-      '原支出标识',
+      t('流水标识'),
+      t('账本'),
+      t('类型'),
+      t('发生时间'),
+      t('时区'),
+      t('金额'),
+      t('币种'),
+      t('分类'),
+      t('支付方式'),
+      t('备注'),
+      t('原支出标识'),
     ],
   ];
   for (const e of entries.filter((e) => !e.deletedAt))
     rows.push([
       e.id,
       s.books.find((b) => b.id === e.bookId)?.name ?? '',
-      { expense: '支出', income: '收入', refund: '退款' }[e.type],
+      { expense: t('支出'), income: t('收入'), refund: t('退款') }[e.type],
       e.occurredAt,
       s.books.find((b) => b.id === e.bookId)?.timezone ?? '',
       amountText(e.amount, e.currency),

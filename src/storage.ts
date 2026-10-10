@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { Capacitor } from '@capacitor/core';
 import { type State, emptyState, validateState } from './model';
 import { purgeExpired } from './domain';
@@ -20,7 +21,7 @@ function validateSyncMeta(value: SyncMeta | null | undefined): SyncMeta | null {
     value.cloudRevision < 0 ||
     (value.secret !== undefined && typeof value.secret !== 'string')
   )
-    throw new Error('同步配置损坏，请保留本地数据并导出备份');
+    throw new Error(t('同步配置损坏，请保留本地数据并导出备份'));
   return { ...value, base: validateState(value.base) };
 }
 
@@ -44,7 +45,7 @@ export class BrowserPersistence implements Persistence {
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
-      req.onblocked = () => reject(new Error('请关闭其他旧版页面后重试'));
+      req.onblocked = () => reject(new Error(t('请关闭其他旧版页面后重试')));
     }));
   }
   async read(): Promise<State | null> {
@@ -97,7 +98,7 @@ export class BrowserPersistence implements Persistence {
             (current.result?.revision ?? null) !== (expected.state?.revision ?? null) ||
             (session.result?.generation ?? null) !== (expected.meta?.generation ?? null)
           )
-            throw new Error('本地数据或同步账号已变化，请重试同步');
+            throw new Error(t('本地数据或同步账号已变化，请重试同步'));
           if (state) {
             const valid = validateState({
               ...state,
@@ -124,7 +125,7 @@ export class BrowserPersistence implements Persistence {
       };
       tx.oncomplete = () => resolve();
       tx.onabort = tx.onerror = () =>
-        reject(failure ?? new Error('同步保存失败，本地数据保持原样'));
+        reject(failure ?? new Error(t('同步保存失败，本地数据保持原样')));
     });
   }
   async write(state: State, previousRevision: number | null) {
@@ -146,7 +147,7 @@ export class BrowserPersistence implements Persistence {
       tx.onabort = tx.onerror = () =>
         reject(
           new Error(
-            conflict ? '数据已在另一页面更新，请刷新后重试' : '本地保存失败，请检查存储空间',
+            conflict ? t('数据已在另一页面更新，请刷新后重试') : t('本地保存失败，请检查存储空间'),
           ),
         );
     });
@@ -211,7 +212,7 @@ export class BrowserPersistence implements Persistence {
       };
       tx.oncomplete = () => resolve(result);
       tx.onabort = tx.onerror = () =>
-        reject(failure ?? new Error('本机保护副本保存失败，请检查存储空间'));
+        reject(failure ?? new Error(t('本机保护副本保存失败，请检查存储空间')));
     });
   }
 }
@@ -273,7 +274,7 @@ export class NativePersistence implements Persistence {
         (current.state?.revision ?? null) !== (expected.state?.revision ?? null) ||
         (current.meta?.generation ?? null) !== (expected.meta?.generation ?? null)
       )
-        throw new Error('本地数据或同步账号已变化，请重试同步');
+        throw new Error(t('本地数据或同步账号已变化，请重试同步'));
       if (state) {
         const valid = validateState({ ...state, revision: (current.state?.revision ?? 0) + 1 });
         if (current.state) {
@@ -326,7 +327,7 @@ export class NativePersistence implements Persistence {
             'UPDATE app_state SET revision = ?, data = ? WHERE id = 1 AND revision = ?;',
             [state.revision, JSON.stringify(state), revision],
           );
-    if (result.changes?.changes !== 1) throw new Error('数据发生变化，请重新打开页面后重试');
+    if (result.changes?.changes !== 1) throw new Error(t('数据发生变化，请重新打开页面后重试'));
   }
   async destroy() {
     const db = await this.open();
@@ -449,12 +450,12 @@ export class Repository {
   async syncRead() {
     await this.queue;
     await this.prepare();
-    if (!this.persistence.syncRead) throw new Error('此存储不支持云同步');
+    if (!this.persistence.syncRead) throw new Error(t('此存储不支持云同步'));
     return this.persistence.syncRead();
   }
   syncWrite(expected: SyncSnapshot, meta: SyncMeta | null, state?: State) {
     const task = this.queue.then(async () => {
-      if (!this.persistence.syncWrite) throw new Error('此存储不支持云同步');
+      if (!this.persistence.syncWrite) throw new Error(t('此存储不支持云同步'));
       await this.persistence.syncWrite(expected, meta, state);
       this.changed('sync');
     });
@@ -463,7 +464,7 @@ export class Repository {
   }
   protect(kind: 'manual' | 'restore', id = '') {
     const task = this.queue.then(async () => {
-      if (!this.persistence.protect) throw new Error('当前存储不支持本机保护');
+      if (!this.persistence.protect) throw new Error(t('当前存储不支持本机保护'));
       // Recovery must remain available when normal loading/validation fails.
       const state = await this.persistence.protect(
         kind === 'restore'

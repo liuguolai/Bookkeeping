@@ -1,3 +1,4 @@
+import { t, useLocale } from './i18n';
 import { useEffect, useRef, type ReactNode } from 'react';
 import {
   ArrowDownLeft,
@@ -178,6 +179,7 @@ export function Dialog({
   compact?: boolean;
   className?: string;
 }) {
+  useLocale();
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -267,7 +269,7 @@ export function Dialog({
       >
         <div className="dialog-head">
           <h2>{title}</h2>
-          <button className="icon-button" aria-label="关闭弹窗" onClick={onClose}>
+          <button className="icon-button" aria-label={t('关闭弹窗')} onClick={onClose}>
             <Icon name="x" />
           </button>
         </div>

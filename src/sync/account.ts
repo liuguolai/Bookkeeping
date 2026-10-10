@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { credentials } from './crypto';
 import { syncRequest } from './transport';
 
@@ -15,17 +16,17 @@ function decode(value: string): Uint8Array<ArrayBuffer> {
 export function normalizeUsername(value: string) {
   const name = value.trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9_-]{2,31}$/.test(name))
-    throw new Error('账号请使用 3–32 位英文字母、数字、下划线或短横线，以字母或数字开头');
+    throw new Error(t('账号请使用 3–32 位英文字母、数字、下划线或短横线，以字母或数字开头'));
   return name;
 }
 export function validatePassword(password: string) {
   if ([...password].length < 8 || password.length > 128)
-    throw new Error('密码需要 8–128 个字符；请勿重复使用其他网站的密码');
+    throw new Error(t('密码需要 8–128 个字符；请勿重复使用其他网站的密码'));
 }
 export const newAccountSalt = () => encode(crypto.getRandomValues(new Uint8Array(32)));
 async function derive(password: string, salt: string) {
   if (!/^[A-Za-z0-9_-]{43}$/.test(salt) || encode(decode(salt)) !== salt)
-    throw new Error('账号加密参数无效，请更新应用后重试');
+    throw new Error(t('账号加密参数无效，请更新应用后重试'));
   validatePassword(password);
   const material = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, [
     'deriveBits',
@@ -95,14 +96,14 @@ export class AccountClient {
         body: input ? JSON.stringify(input) : undefined,
       });
       if (!response.headers.get('Content-Type')?.includes('application/json'))
-        throw new Error('网站尚未部署账号服务，请联系管理员升级');
+        throw new Error(t('网站尚未部署账号服务，请联系管理员升级'));
       const value = await response.json();
-      if (!response.ok) throw new Error(value.error ?? '账号操作失败，请稍后重试');
+      if (!response.ok) throw new Error(value.error ?? t('账号操作失败，请稍后重试'));
       return value;
     } catch (error) {
       if (error instanceof TypeError || (error instanceof Error && error.name === 'AbortError'))
         throw new Error(
-          '连接中断或超时。若正在设置密码，请重新打开账号设置确认结果；原同步密钥仍可使用',
+          t('连接中断或超时。若正在设置密码，请重新打开账号设置确认结果；原同步密钥仍可使用'),
         );
       throw error;
     } finally {
@@ -118,7 +119,7 @@ export class AccountClient {
       !Number.isSafeInteger(data.account.revision) ||
       data.account.revision < 1
     )
-      throw new Error('账号信息无效，请更新应用');
+      throw new Error(t('账号信息无效，请更新应用'));
     return data.account;
   }
   async bind(secret: string, username: string, password: string, revision = 0) {
@@ -160,12 +161,12 @@ export class AccountClient {
       if (identity.accountId !== data.vaultId) throw new Error();
       return identity.secret;
     } catch {
-      throw new Error('账号密钥无法解锁，请使用恢复密钥连接后重新设置密码；本地账目保留');
+      throw new Error(t('账号密钥无法解锁，请使用恢复密钥连接后重新设置密码；本地账目保留'));
     }
   }
   async recover(secret: string, password: string) {
     const account = await this.current(secret);
-    if (!account) throw new Error('此空间尚未绑定账号，请先使用同步密钥连接，再设置账号密码');
+    if (!account) throw new Error(t('此空间尚未绑定账号，请先使用同步密钥连接，再设置账号密码'));
     await this.bind(secret, account.username, password, account.revision);
     return account.username;
   }

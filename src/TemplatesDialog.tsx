@@ -1,3 +1,4 @@
+import { t as tr, useLocale } from './i18n';
 import { useState } from 'react';
 import { useLedger } from './context';
 import { type Book, type EntryTemplate, uid } from './model';
@@ -15,6 +16,7 @@ export function TemplatesDialog({
   onClose: () => void;
   onUse: (t: EntryTemplate) => void;
 }) {
+  useLocale();
   const { state, run, confirm, notify } = useLedger();
   const [editing, setEditing] = useState<EntryTemplate | 'new' | null>(null);
   const [name, setName] = useState(''),
@@ -39,7 +41,7 @@ export function TemplatesDialog({
     if (busy) return;
     if (
       editing &&
-      !(await confirm('放弃模板编辑？', '尚未保存的模板修改会丢失。', true, '放弃编辑'))
+      !(await confirm(tr('放弃模板编辑？'), tr('尚未保存的模板修改会丢失。'), true, tr('放弃编辑')))
     )
       return;
     if (editing) setEditing(null);
@@ -47,11 +49,12 @@ export function TemplatesDialog({
   };
   return (
     <Dialog
-      title={editing ? (editing === 'new' ? '新建模板' : '编辑模板') : '常用模板'}
+      title={editing ? (editing === 'new' ? tr('新建模板') : tr('编辑模板')) : tr('常用模板')}
       onClose={leave}
     >
       <p className="dialog-copy">
-        {book.name} · 模板按账本和币种保存。使用时预填，确认后才记入账本。
+        {book.name}
+        {tr(' · 模板按账本和币种保存。使用时预填，确认后才记入账本。')}
       </p>
       {editing ? (
         <form
@@ -71,7 +74,7 @@ export function TemplatesDialog({
                 paymentId: payment || undefined,
                 note,
               };
-              if (await run((s) => saveTemplate(s, value, editing !== 'new'), '模板已保存'))
+              if (await run((s) => saveTemplate(s, value, editing !== 'new'), tr('模板已保存')))
                 setEditing(null);
             } catch (error) {
               notify((error as Error).message);
@@ -80,9 +83,9 @@ export function TemplatesDialog({
             }
           }}
         >
-          <Label title="模板名称">
+          <Label title={tr('模板名称')}>
             <input
-              aria-label="模板名称"
+              aria-label={tr('模板名称')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={20}
@@ -91,22 +94,22 @@ export function TemplatesDialog({
             />
           </Label>
           <div className="form-grid">
-            <Label title="收支类型">
+            <Label title={tr('收支类型')}>
               <select
-                aria-label="模板类型"
+                aria-label={tr('模板类型')}
                 value={type}
                 onChange={(e) => {
                   setType(e.target.value as typeof type);
                   setCategory('');
                 }}
               >
-                <option value="expense">支出</option>
-                <option value="income">收入</option>
+                <option value="expense">{tr('支出')}</option>
+                <option value="income">{tr('收入')}</option>
               </select>
             </Label>
-            <Label title="币种">
+            <Label title={tr('币种')}>
               <select
-                aria-label="模板币种"
+                aria-label={tr('模板币种')}
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as Currency)}
               >
@@ -117,25 +120,25 @@ export function TemplatesDialog({
             </Label>
           </div>
           <Label
-            title="固定金额 · 选填"
-            hint="留空则每次输入；支持加减算式。更换币种不会换算金额。"
+            title={tr('固定金额 · 选填')}
+            hint={tr('留空则每次输入；支持加减算式。更换币种不会换算金额。')}
           >
             <input
-              aria-label="模板金额"
+              aria-label={tr('模板金额')}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               inputMode="decimal"
               maxLength={40}
             />
           </Label>
-          <Label title="分类">
+          <Label title={tr('分类')}>
             <select
-              aria-label="模板分类"
+              aria-label={tr('模板分类')}
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               required
             >
-              <option value="">请选择</option>
+              <option value="">{tr('请选择')}</option>
               {state.categories
                 .filter(
                   (c) => c.bookId === book.id && c.type === type && (c.active || c.id === category),
@@ -143,31 +146,31 @@ export function TemplatesDialog({
                 .map((c) => (
                   <option key={c.id} value={c.id} disabled={!c.active}>
                     {c.name}
-                    {!c.active ? '（已停用）' : ''}
+                    {!c.active ? tr('（已停用）') : ''}
                   </option>
                 ))}
             </select>
           </Label>
-          <Label title="支付方式 · 选填">
+          <Label title={tr('支付方式 · 选填')}>
             <select
-              aria-label="模板支付方式"
+              aria-label={tr('模板支付方式')}
               value={payment}
               onChange={(e) => setPayment(e.target.value)}
             >
-              <option value="">未填写</option>
+              <option value="">{tr('未填写')}</option>
               {state.payments
                 .filter((p) => p.bookId === book.id && (p.active || p.id === payment))
                 .map((p) => (
                   <option key={p.id} value={p.id} disabled={!p.active}>
                     {p.name}
-                    {!p.active ? '（已停用）' : ''}
+                    {!p.active ? tr('（已停用）') : ''}
                   </option>
                 ))}
             </select>
           </Label>
-          <Label title="备注 · 选填">
+          <Label title={tr('备注 · 选填')}>
             <input
-              aria-label="模板备注"
+              aria-label={tr('模板备注')}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={200}
@@ -175,21 +178,23 @@ export function TemplatesDialog({
           </Label>
           <div className="actions">
             <button type="button" className="secondary" onClick={leave} disabled={busy}>
-              返回列表
+              {tr('返回列表')}
             </button>
             <button className="primary" disabled={busy}>
-              保存模板
+              {tr('保存模板')}
             </button>
           </div>
         </form>
       ) : (
         <>
           <button className="primary wide" disabled={book.archived} onClick={() => start()}>
-            新建模板
+            {tr('新建模板')}
           </button>
           <div className="template-list">
             {!state.templates.some((t) => t.bookId === book.id) && (
-              <p className="dialog-copy">还没有模板。可以保存早餐、通勤、房租等常用记录。</p>
+              <p className="dialog-copy">
+                {tr('还没有模板。可以保存早餐、通勤、房租等常用记录。')}
+              </p>
             )}
             {state.templates
               .filter((t) => t.bookId === book.id)
@@ -197,16 +202,16 @@ export function TemplatesDialog({
                 <article className="template-card" key={t.id}>
                   <h3>{t.name}</h3>
                   <p>
-                    {t.type === 'income' ? '收入' : '支出'} · {t.currency}{' '}
-                    {t.amount === undefined ? '每次填写金额' : amountText(t.amount, t.currency)} ·{' '}
-                    {state.categories.find((c) => c.id === t.categoryId)?.name}
+                    {t.type === 'income' ? tr('收入') : tr('支出')}· {t.currency}{' '}
+                    {t.amount === undefined ? tr('每次填写金额') : amountText(t.amount, t.currency)}
+                    · {state.categories.find((c) => c.id === t.categoryId)?.name}
                   </p>
                   <div className="template-actions">
                     <button className="primary" disabled={book.archived} onClick={() => onUse(t)}>
-                      使用模板
+                      {tr('使用模板')}
                     </button>
                     <button className="secondary" disabled={book.archived} onClick={() => start(t)}>
-                      编辑
+                      {tr('编辑')}
                     </button>
                     <button
                       className="text-button danger-text"
@@ -214,10 +219,10 @@ export function TemplatesDialog({
                       onClick={async () => {
                         if (
                           !(await confirm(
-                            '删除模板？',
-                            `删除“${t.name}”不会影响已有记录。`,
+                            tr('删除模板？'),
+                            tr('删除“{0}”不会影响已有记录。', [t.name]),
                             true,
-                            '删除模板',
+                            tr('删除模板'),
                           ))
                         )
                           return;
@@ -226,11 +231,11 @@ export function TemplatesDialog({
                           writableBook(s, book.id);
                           s.templates = s.templates.filter((x) => x.id !== t.id);
                           touch(s, book.id);
-                        }, '模板已删除');
+                        }, tr('模板已删除'));
                         setBusy(false);
                       }}
                     >
-                      删除
+                      {tr('删除')}
                     </button>
                   </div>
                 </article>

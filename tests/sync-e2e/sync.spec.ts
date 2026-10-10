@@ -66,6 +66,7 @@ test('password account: bind existing space, login on fresh device, change and r
   await nav(page, '绑定账号');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const second = await browser.newContext({
+    locale: 'zh-CN',
     viewport: { width: 320, height: 740 },
     baseURL: 'http://127.0.0.1:4176',
   });
@@ -136,7 +137,7 @@ test('account login and recovery cannot silently switch a device to another spac
   await page.getByText('我已保存恢复密钥并了解上述说明', { exact: true }).click();
   await nav(page, '绑定账号');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  const second = await browser.newContext({ baseURL: 'http://127.0.0.1:4176' });
+  const second = await browser.newContext({ locale: 'zh-CN', baseURL: 'http://127.0.0.1:4176' });
   try {
     const pc = await second.newPage();
     await create(pc);
@@ -180,6 +181,7 @@ test('real Worker + D1: encrypted account, two devices, offline/reload, deletion
   await add(page, '手机消费');
   await sync(page);
   const second = await browser.newContext({
+    locale: 'zh-CN',
     viewport: { width: 1280, height: 900 },
     baseURL: 'http://127.0.0.1:4176',
   });
@@ -237,7 +239,10 @@ test('conflict selection preserves both versions until confirmation and resolves
   const key = await create(page);
   await add(page, '编辑目标');
   await sync(page);
-  const second = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const second = await browser.newContext({
+    locale: 'zh-CN',
+    viewport: { width: 390, height: 844 },
+  });
   const other = await second.newPage();
   await join(other, key);
   const edit = async (target: Page, note: string) => {
@@ -305,6 +310,7 @@ test('same-name empty book stays intact and synced records are discoverable acro
   await nav(page, '保存记录');
   await sync(page);
   const second = await browser.newContext({
+    locale: 'zh-CN',
     viewport: { width: 320, height: 740 },
     baseURL: 'http://127.0.0.1:4176',
   });
@@ -352,6 +358,7 @@ test('fresh device restores existing books without creating a default duplicate'
   await add(page, '直接连接已有账本');
   await sync(page);
   const second = await browser.newContext({
+    locale: 'zh-CN',
     viewport: { width: 390, height: 844 },
     baseURL: 'http://127.0.0.1:4176',
   });

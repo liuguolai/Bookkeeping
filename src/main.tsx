@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -12,11 +13,11 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { fai
   render() {
     return this.state.failed ? (
       <main className="boot">
-        <h1>页面暂时无法显示</h1>
-        <p>已保存的数据不会因此清除。请重新打开应用。</p>
+        <h1>{t('页面暂时无法显示')}</h1>
+        <p>{t('已保存的数据不会因此清除。请重新打开应用。')}</p>
         <PwaPanel />
         <button className="primary" onClick={() => location.reload()}>
-          重新打开
+          {t('重新打开')}
         </button>
       </main>
     ) : (

@@ -1,3 +1,5 @@
+import { t, useLocale } from './i18n';
+import { messageText } from './i18n';
 import { ProtectionPanel } from './ProtectionPanel';
 import { PwaPanel } from './PwaPanel';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -27,6 +29,7 @@ interface AppContextValue {
 }
 const Context = createContext<AppContextValue | null>(null);
 export function LedgerProvider({ children }: { children: ReactNode }) {
+  useLocale();
   const [state, setState] = useState(emptyState),
     [ready, setReady] = useState(false),
     [fatal, setFatal] = useState('');
@@ -47,12 +50,12 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
         setState(s);
         setReady(true);
       })
-      .catch(() => setFatal('本地数据无法读取。请保留现有数据，重启后重试；不要清除应用数据。'));
+      .catch(() => setFatal(t('本地数据无法读取。请保留现有数据，重启后重试；不要清除应用数据。')));
     const reload = () => {
       repository
         .load()
         .then(setState)
-        .catch(() => notify('读取失败，请重试'));
+        .catch(() => notify(t('读取失败，请重试')));
     };
     window.addEventListener('focus', reload);
     return () => {
@@ -94,14 +97,14 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
       notify(
         error instanceof Error
           ? error.name === 'ZodError'
-            ? '数据校验失败，请检查输入或备份内容'
+            ? t('数据校验失败，请检查输入或备份内容')
             : error.message
-          : '保存失败，请重试',
+          : t('保存失败，请重试'),
       );
       return false;
     }
   };
-  const confirm = (title: string, body: string, destructive = false, action = '确认') =>
+  const confirm = (title: string, body: string, destructive = false, action = t('确认')) =>
     new Promise<boolean>((resolve) =>
       setConfirmation({ title, body, destructive, action, resolve }),
     );
@@ -113,12 +116,12 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     return (
       <div className="boot">
         <Icon name="shield" size={40} />
-        <h1>暂时无法打开账本</h1>
-        <p>{fatal}</p>
+        <h1>{t('暂时无法打开账本')}</h1>
+        <p>{messageText(fatal)}</p>
         <ProtectionPanel recovery />
         <PwaPanel />
         <button className="primary" onClick={() => location.reload()}>
-          重新打开
+          {t('重新打开')}
         </button>
       </div>
     );
@@ -128,8 +131,8 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
         <div className="brand-mark">
           <Icon name="wallet" size={32} />
         </div>
-        <h2>打开你的账本</h2>
-        <p>正在读取本机数据…</p>
+        <h2>{t('打开你的账本')}</h2>
+        <p>{t('正在读取本机数据…')}</p>
       </div>
     );
   return (
@@ -140,24 +143,24 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
       {toast && (
         <div className="toast" role="status">
           <Icon name="info" size={18} />
-          {toast}
-          <button aria-label="关闭提示" onClick={() => setToast('')}>
+          {messageText(toast)}
+          <button aria-label={t('关闭提示')} onClick={() => setToast('')}>
             <Icon name="x" size={16} />
           </button>
         </div>
       )}
       {confirmation && (
-        <Dialog title={confirmation.title} onClose={() => answer(false)} compact>
-          <p className="dialog-copy">{confirmation.body}</p>
+        <Dialog title={messageText(confirmation.title)} onClose={() => answer(false)} compact>
+          <p className="dialog-copy">{messageText(confirmation.body)}</p>
           <div className="actions">
             <button className="secondary" onClick={() => answer(false)}>
-              取消
+              {t('取消')}
             </button>
             <button
               className={confirmation.destructive ? 'danger' : 'primary'}
               onClick={() => answer(true)}
             >
-              {confirmation.action}
+              {messageText(confirmation.action ?? '')}
             </button>
           </div>
         </Dialog>

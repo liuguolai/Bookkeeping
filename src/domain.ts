@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { CURRENCIES, addMoney, parseMoney, type Currency } from './money';
 import { type State, type Entry, type Book, type Budget, uid, localTime, validDate } from './model';
 
@@ -28,10 +29,10 @@ export function createBook(
   currency: Currency,
   timezone = 'Asia/Shanghai',
 ): Book {
-  if (s.books.length >= 20) throw new Error('最多可创建 20 个账本');
+  if (s.books.length >= 20) throw new Error(t('最多可创建 20 个账本'));
   name = name.trim();
-  if (!name || name.length > 20) throw new Error('账本名称需要 1 至 20 个字符');
-  if (s.books.some((b) => !b.deletedAt && b.name === name)) throw new Error('已有同名账本');
+  if (!name || name.length > 20) throw new Error(t('账本名称需要 1 至 20 个字符'));
+  if (s.books.some((b) => !b.deletedAt && b.name === name)) throw new Error(t('已有同名账本'));
   localTime(timezone);
   const now = Date.now();
   const b: Book = {
@@ -51,15 +52,15 @@ export function createBook(
     ['income', incomeCategories],
   ] as const)
     for (const [name, icon] of list)
-      s.categories.push({ id: uid(), bookId: b.id, name, icon, type, active: true });
-  for (const name of ['微信', '支付宝', '银行卡', '现金', '其他'])
+      s.categories.push({ id: uid(), bookId: b.id, name: t(name), icon, type, active: true });
+  for (const name of [t('微信'), t('支付宝'), t('银行卡'), t('现金'), t('其他')])
     s.payments.push({ id: uid(), bookId: b.id, name, active: true });
   return b;
 }
 export function writableBook(s: State, id: string): Book {
   const b = s.books.find((b) => b.id === id);
-  if (!b || b.deletedAt) throw new Error('账本已删除');
-  if (b.archived) throw new Error('账本已归档，请先解除归档');
+  if (!b || b.deletedAt) throw new Error(t('账本已删除'));
+  if (b.archived) throw new Error(t('账本已归档，请先解除归档'));
   return b;
 }
 export function touch(s: State, bookId: string) {
@@ -106,33 +107,34 @@ export function saveEntry(
   const book = writableBook(s, input.bookId);
   const existing = s.entries.find((e) => e.id === input.id);
   if (existing && !editing) return existing;
-  if (editing && (!existing || existing.deletedAt)) throw new Error('这笔记录已删除，请刷新后重试');
+  if (editing && (!existing || existing.deletedAt))
+    throw new Error(t('这笔记录已删除，请刷新后重试'));
   if (existing && expectedUpdatedAt !== undefined && existing.updatedAt !== expectedUpdatedAt)
-    throw new Error('记录已在另一页面修改，请重新打开');
+    throw new Error(t('记录已在另一页面修改，请重新打开'));
   if (
     existing &&
     (existing.currency !== input.currency ||
       existing.bookId !== input.bookId ||
       existing.type !== input.type)
   )
-    throw new Error('已保存记录不能更改币种、类型或账本');
+    throw new Error(t('已保存记录不能更改币种、类型或账本'));
   if (
     !validDate(input.occurredAt) ||
     input.occurredAt.slice(0, 10) > localTime(book.timezone).slice(0, 10)
   )
-    throw new Error('请选择有效的发生日期，不能晚于今天');
+    throw new Error(t('请选择有效的发生日期，不能晚于今天'));
   const amount = parseMoney(input.amount, input.currency);
-  if (input.note.length > 200) throw new Error('备注最多 200 个字符');
+  if (input.note.length > 200) throw new Error(t('备注最多 200 个字符'));
   let categoryId = input.categoryId;
   if (input.type === 'refund') {
     const parent = s.entries.find(
       (e) => e.id === input.originalId && !e.deletedAt && e.type === 'expense',
     );
     if (!parent || parent.bookId !== book.id || parent.currency !== input.currency)
-      throw new Error('退款须关联同账本、同币种的有效支出');
-    if (input.occurredAt < parent.occurredAt) throw new Error('退款不能早于原支出');
+      throw new Error(t('退款须关联同账本、同币种的有效支出'));
+    if (input.occurredAt < parent.occurredAt) throw new Error(t('退款不能早于原支出'));
     if (amount > remainingRefund(s, parent, existing?.id))
-      throw new Error('退款金额超过剩余可退金额');
+      throw new Error(t('退款金额超过剩余可退金额'));
     categoryId = parent.categoryId;
   }
   const cat = s.categories.find(
@@ -142,7 +144,7 @@ export function saveEntry(
       c.type === (input.type === 'income' ? 'income' : 'expense'),
   );
   if (!cat || (!cat.active && input.type !== 'refund' && existing?.categoryId !== cat.id))
-    throw new Error('请选择一个有效分类');
+    throw new Error(t('请选择一个有效分类'));
   if (input.paymentId) {
     const payment = s.payments.find((p) => p.id === input.paymentId && p.bookId === book.id);
     const parentPayment = input.originalId
@@ -152,13 +154,13 @@ export function saveEntry(
       !payment ||
       (!payment.active && existing?.paymentId !== payment.id && parentPayment !== payment.id)
     )
-      throw new Error('请选择有效支付方式');
+      throw new Error(t('请选择有效支付方式'));
   }
   if (existing?.type === 'expense') {
     if (amount < existing.amount - remainingRefund(s, existing))
-      throw new Error('金额不能低于已退款总额');
+      throw new Error(t('金额不能低于已退款总额'));
     if (s.entries.some((e) => e.originalId === existing.id && e.occurredAt < input.occurredAt))
-      throw new Error('原支出日期不能晚于其退款日期');
+      throw new Error(t('原支出日期不能晚于其退款日期'));
   }
   const now = Math.max(Date.now(), (existing?.updatedAt ?? 0) + 1);
   const result: Entry = {
@@ -180,7 +182,7 @@ export function saveEntry(
 }
 export function deleteEntry(s: State, id: string) {
   const e = s.entries.find((e) => e.id === id && !e.deletedAt);
-  if (!e) throw new Error('记录不存在');
+  if (!e) throw new Error(t('记录不存在'));
   writableBook(s, e.bookId);
   const now = Date.now();
   for (const item of s.entries)
@@ -193,13 +195,13 @@ export function deleteEntry(s: State, id: string) {
 }
 export function restoreEntry(s: State, id: string) {
   const e = s.entries.find((e) => e.id === id && e.deletedAt);
-  if (!e) throw new Error('记录已恢复或已过期');
+  if (!e) throw new Error(t('记录已恢复或已过期'));
   writableBook(s, e.bookId);
   const group = s.entries.filter(
     (x) => x.deletedAt && (x.id === id || (e.type === 'expense' && x.deletionGroup === e.id)),
   );
   if (group.some((x) => Date.now() - x.deletedAt! >= 30 * 86400000))
-    throw new Error('记录已超过 30 天恢复期');
+    throw new Error(t('记录已超过 30 天恢复期'));
   for (const item of group) {
     delete item.deletedAt;
     delete item.deletionGroup;
@@ -249,7 +251,7 @@ export function summarize(entries: Entry[], currency: Currency) {
 export function saveBudget(s: State, budget: Budget) {
   writableBook(s, budget.bookId);
   if (Object.values(budget.categories).reduce((a, b) => a + b, 0) > budget.amount)
-    throw new Error('分类预算之和不能超过总预算');
+    throw new Error(t('分类预算之和不能超过总预算'));
   s.budgets = s.budgets.filter(
     (b) =>
       !(b.bookId === budget.bookId && b.month === budget.month && b.currency === budget.currency),

@@ -23,6 +23,33 @@ test.beforeEach(async ({ request }) => {
   await request.post('/__test__/release?v=a');
 });
 
+test('language choices and translations remain available offline', async ({ page, context }) => {
+  await ready(page);
+  const language = page.getByRole('combobox', { name: '语言 / Language' });
+  await language.selectOption('en');
+  await nav(page, 'Start my ledger');
+  await nav(page, 'Settings');
+  await context.setOffline(true);
+  await language.selectOption('zh-TW');
+  await expect(page.getByText('數據與備份', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-TW');
+  await nav(page, '設置');
+  await language.selectOption('en');
+  await expect(page.getByRole('region', { name: 'Installation & offline use' })).toContainText(
+    'Ready offline',
+  );
+  await nav(page, 'Records');
+  await nav(page, 'Add entry');
+  await page.getByLabel('Amount', { exact: true }).fill('19.50');
+  await page.getByRole('button', { name: 'Dining', exact: true }).click();
+  await nav(page, 'Save entry');
+  await expect(page.locator('.entry-row')).toContainText('19.50');
+  await page.reload();
+  await expect(page).toHaveTitle('Pocket Ledger');
+  await expect(page.locator('.entry-row')).toContainText('19.50');
+});
+
 test('repairs an installed redirected shell without clearing records or forcing an editing tab to reload', async ({
   page,
   context,

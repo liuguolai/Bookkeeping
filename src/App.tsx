@@ -1,3 +1,5 @@
+import { t, useLocale, getLocale } from './i18n';
+import { LanguageSelector } from './LanguageSelector';
 import { PwaPanel } from './PwaPanel';
 import { SyncPanel, SyncStatusButton } from './SyncPanel';
 import { ComparisonPanel } from './ComparisonPanel';
@@ -36,6 +38,7 @@ const navigation = [
 const categoryColors = ['peach', 'green', 'blue', 'purple', 'yellow'];
 
 export default function App() {
+  useLocale();
   const { state, run } = useLedger();
   const book =
     state.books.find((b) => b.id === state.activeBookId && !b.deletedAt) ??
@@ -154,7 +157,7 @@ export default function App() {
         <Welcome />
         {state.books.some((b) => b.deletedAt) && (
           <button className="recover-books" onClick={() => setPanel('books')}>
-            找回已删除账本
+            {t('找回已删除账本')}
           </button>
         )}
         {panel === 'books' && <BooksDialog onClose={() => setPanel(null)} />}
@@ -219,10 +222,10 @@ export default function App() {
   const maxTrend = Math.max(1, ...trend.map(([, n]) => Math.abs(n)));
   const detail = state.entries.find((e) => e.id === detailId && !e.deletedAt);
   const viewTitle = {
-    records: '让每一笔，都有迹可循。',
-    stats: '看见开销，也看见生活。',
-    budget: '给想要的生活，留点余地。',
-    settings: '你的账本，由你保管。',
+    records: t('让每一笔，都有迹可循。'),
+    stats: t('看见开销，也看见生活。'),
+    budget: t('给想要的生活，留点余地。'),
+    settings: t('你的账本，由你保管。'),
   }[page];
   const clearFilters = () => {
     setQuery('');
@@ -236,31 +239,31 @@ export default function App() {
     <>
       <div className="period-toggle">
         <button className={period === 'month' ? 'active' : ''} onClick={() => setPeriod('month')}>
-          月度
+          {t('月度')}
         </button>
         <button className={period === 'year' ? 'active' : ''} onClick={() => setPeriod('year')}>
-          年度
+          {t('年度')}
         </button>
         <button className={period === 'custom' ? 'active' : ''} onClick={() => setPeriod('custom')}>
-          自定义
+          {t('自定义')}
         </button>
       </div>
       {period === 'custom' && (
         <div className="date-range">
           <input
-            aria-label="筛选开始日期"
+            aria-label={t('筛选开始日期')}
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
           />
-          <span>至</span>
+          <span>{t('至')}</span>
           <input
-            aria-label="筛选结束日期"
+            aria-label={t('筛选结束日期')}
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
           />
-          {from > to && <small className="error-text">开始日期不能晚于结束日期</small>}
+          {from > to && <small className="error-text">{t('开始日期不能晚于结束日期')}</small>}
         </div>
       )}
     </>
@@ -272,9 +275,9 @@ export default function App() {
           <span className="brand-mark">
             <Icon name="wallet" size={23} />
           </span>
-          <b>口袋账本</b>
+          <b>{t('口袋账本')}</b>
         </div>
-        <p className="sidebar-subtitle">把生活，慢慢记好。</p>
+        <p className="sidebar-subtitle">{t('把生活，慢慢记好。')}</p>
         <nav>
           {navigation.map((item) => (
             <button
@@ -283,7 +286,7 @@ export default function App() {
               onClick={() => setPage(item.id)}
             >
               <Icon name={item.icon} />
-              {item.label}
+              {t(item.label)}
               <span className="nav-dot" />
             </button>
           ))}
@@ -292,10 +295,11 @@ export default function App() {
           <div className="local-badge">
             <Icon name="shield" size={17} />
             <span>
-              离线也能记账<small>本地保存 · 云同步可选</small>
+              {t('离线也能记账')}
+              <small>{t('本地保存 · 云同步可选')}</small>
             </span>
           </div>
-          <span className="version">口袋账本 / 0.1</span>
+          <span className="version">{t('口袋账本 / 0.1')}</span>
         </div>
       </aside>
       <main className="main">
@@ -304,10 +308,12 @@ export default function App() {
             <span className="brand-mark">
               <Icon name="wallet" size={20} />
             </span>
-            <b>口袋账本</b>
+            <b>{t('口袋账本')}</b>
           </div>
           <span className="desktop-breadcrumb">
-            我的空间 <Icon name="right" size={14} /> {navigation.find((n) => n.id === page)?.label}
+            {t('我的空间 ')}
+            <Icon name="right" size={14} />
+            {t(navigation.find((n) => n.id === page)!.label)}
           </span>
           <button className="book-switch" onClick={() => setPanel('books')}>
             <Icon name={book.archived ? 'archive' : 'book'} size={17} />
@@ -320,12 +326,12 @@ export default function App() {
             <div>
               <span className="eyebrow">
                 {page === 'records'
-                  ? '一笔一笔，都是生活'
+                  ? t('一笔一笔，都是生活')
                   : page === 'stats'
-                    ? '每一种币种，单独看清'
+                    ? t('每一种币种，单独看清')
                     : page === 'budget'
-                      ? '花得有数，心里有底'
-                      : '简单一点，安心一点'}
+                      ? t('花得有数，心里有底')
+                      : t('简单一点，安心一点')}
               </span>
               <h1>{viewTitle}</h1>
             </div>
@@ -336,7 +342,7 @@ export default function App() {
                 onClick={() => setEditor({})}
               >
                 <Icon name="plus" size={19} />
-                记一笔
+                {t('记一笔')}
               </button>
             )}
           </div>
@@ -344,11 +350,11 @@ export default function App() {
             <div className="backup-reminder" role="status">
               <Icon name="shield" size={20} />
               <span>
-                账本有新变动，已超过 7 天未生成备份。
-                <small>请把加密备份另存到手机外，换机时才能恢复。</small>
+                {t('账本有新变动，已超过 7 天未生成备份。')}
+                <small>{t('请把加密备份另存到手机外，换机时才能恢复。')}</small>
               </span>
               <button className="text-button" onClick={() => setPanel('backup')}>
-                去备份
+                {t('去备份')}
               </button>
             </div>
           )}
@@ -356,14 +362,14 @@ export default function App() {
           {readonly && (
             <div className="notice archive-notice">
               <Icon name="archive" />
-              这个账本已归档。查看和导出仍可使用。
+              {t('这个账本已归档。查看和导出仍可使用。')}
             </div>
           )}
           {page !== 'settings' && (
             <div className="view-toolbar">
               {page === 'records' && (
                 <button className="secondary" onClick={() => setPanel('templates')}>
-                  常用模板
+                  {t('常用模板')}
                 </button>
               )}
               <MonthPicker
@@ -377,7 +383,7 @@ export default function App() {
                     className={currency === 'all' ? 'active' : ''}
                     onClick={() => setCurrency('all')}
                   >
-                    全部币种
+                    {t('全部币种')}
                   </button>
                   {Array.from(new Set([...book.common, ...all.map((e) => e.currency)])).map((c) => (
                     <button
@@ -392,13 +398,13 @@ export default function App() {
               ) : (
                 <select
                   className="currency-select"
-                  aria-label="统计预算币种"
+                  aria-label={t('统计预算币种')}
                   value={statsCurrency}
                   onChange={(e) => setStatsCurrency(e.target.value as Currency)}
                 >
                   {currencyCodes.map((c) => (
                     <option key={c} value={c}>
-                      {CURRENCIES[c].name} · {c}
+                      {t(CURRENCIES[c].name)}· {c}
                     </option>
                   ))}
                 </select>
@@ -414,17 +420,22 @@ export default function App() {
                     <section
                       className={`summary-card ${index === 0 ? 'warm' : ''}`}
                       key={c}
-                      aria-label={`${c}收支摘要`}
+                      aria-label={t('{0}收支摘要', [c])}
                     >
                       <div className="card-top">
                         <span className="currency-symbol">{CURRENCIES[c].symbol}</span>
                         <span>
-                          {CURRENCIES[c].name}
+                          {t(CURRENCIES[c].name)}
                           <small>{c}</small>
                         </span>
                         <span className="summary-caption">
-                          {period === 'month' ? '本月' : period === 'year' ? '本年' : '所选期间'}
-                          净支出
+                          {t('{0}净支出', [
+                            period === 'month'
+                              ? t('本月')
+                              : period === 'year'
+                                ? t('本年')
+                                : t('所选期间'),
+                          ])}
                         </span>
                       </div>
                       <div className="hero-amount">
@@ -433,13 +444,17 @@ export default function App() {
                       </div>
                       <div className="summary-bottom">
                         <span>
-                          收入
+                          {t('收入')}
                           <strong className="income-text">{money(data.income, c, false)}</strong>
                         </span>
                         <span>
-                          收支结余<strong>{money(data.balance, c, false)}</strong>
+                          {t('收支结余')}
+                          <strong>{money(data.balance, c, false)}</strong>
                         </span>
-                        <span className="summary-count">{data.count} 笔</span>
+                        <span className="summary-count">
+                          {data.count}
+                          {t(' 笔')}
+                        </span>
                       </div>
                     </section>
                   );
@@ -447,34 +462,35 @@ export default function App() {
               </div>
               <div className="summary-footnote">
                 <Icon name="coins" size={14} />
-                不同币种分别统计，不换算、不相加。收支结余不代表账户余额。
+                {t('不同币种分别统计，不换算、不相加。收支结余不代表账户余额。')}
               </div>
               <div className="records-layout">
                 <section className="card records-card">
                   <div className="section-heading">
                     <h2>
-                      收支明细 <span>{filtered.length}</span>
+                      {t('收支明细 ')}
+                      <span>{filtered.length}</span>
                     </h2>
                     <button
                       className={`text-button ${filterOpen ? 'accent' : ''}`}
                       onClick={() => setFilterOpen(!filterOpen)}
                     >
                       <Icon name="filter" size={17} />
-                      筛选
+                      {t('筛选')}
                     </button>
                   </div>
                   <div className="search-wrap">
                     <Icon name="search" size={17} />
                     <input
-                      aria-label="搜索备注"
-                      placeholder="搜一搜备注里的小细节"
+                      aria-label={t('搜索备注')}
+                      placeholder={t('搜一搜备注里的小细节')}
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                     />
                     {query && (
                       <button
                         className="icon-button"
-                        aria-label="清除搜索"
+                        aria-label={t('清除搜索')}
                         onClick={() => setQuery('')}
                       >
                         <Icon name="x" size={16} />
@@ -486,21 +502,21 @@ export default function App() {
                       {periodControls}
                       <div className="filter-selects">
                         <select
-                          aria-label="流水类型"
+                          aria-label={t('流水类型')}
                           value={typeFilter}
                           onChange={(e) => setTypeFilter(e.target.value)}
                         >
-                          <option value="">全部类型</option>
-                          <option value="expense">支出</option>
-                          <option value="income">收入</option>
-                          <option value="refund">退款</option>
+                          <option value="">{t('全部类型')}</option>
+                          <option value="expense">{t('支出')}</option>
+                          <option value="income">{t('收入')}</option>
+                          <option value="refund">{t('退款')}</option>
                         </select>
                         <select
-                          aria-label="分类筛选"
+                          aria-label={t('分类筛选')}
                           value={categoryFilter}
                           onChange={(e) => setCategoryFilter(e.target.value)}
                         >
-                          <option value="">全部分类</option>
+                          <option value="">{t('全部分类')}</option>
                           {state.categories
                             .filter((c) => c.bookId === book.id)
                             .map((c) => (
@@ -510,12 +526,12 @@ export default function App() {
                             ))}
                         </select>
                         <select
-                          aria-label="支付方式筛选"
+                          aria-label={t('支付方式筛选')}
                           value={paymentFilter}
                           onChange={(e) => setPaymentFilter(e.target.value)}
                         >
-                          <option value="">全部支付方式</option>
-                          <option value="none">未填写</option>
+                          <option value="">{t('全部支付方式')}</option>
+                          <option value="none">{t('未填写')}</option>
                           {state.payments
                             .filter((p) => p.bookId === book.id)
                             .map((p) => (
@@ -526,7 +542,7 @@ export default function App() {
                         </select>
                       </div>
                       <button className="text-button" onClick={clearFilters}>
-                        清除筛选
+                        {t('清除筛选')}
                       </button>
                     </div>
                   )}
@@ -537,10 +553,14 @@ export default function App() {
                           <div className="day-heading">
                             <span>
                               {day === localTime(book.timezone).slice(0, 10)
-                                ? '今天'
-                                : day.slice(5).replace('-', '月') + '日'}
+                                ? t('今天')
+                                : new Intl.DateTimeFormat(getLocale(), {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    timeZone: 'UTC',
+                                  }).format(new Date(day + 'T12:00:00Z'))}
                               <small>
-                                {new Intl.DateTimeFormat('zh-CN', {
+                                {new Intl.DateTimeFormat(getLocale(), {
                                   weekday: 'short',
                                   timeZone: 'UTC',
                                 }).format(new Date(day + 'T12:00:00Z'))}
@@ -551,7 +571,8 @@ export default function App() {
                                 .filter((c) => rows.some((e) => e.currency === c))
                                 .map((c) => (
                                   <small key={c}>
-                                    {c} 净支出{' '}
+                                    {c}
+                                    {t(' 净支出')}{' '}
                                     {money(
                                       summarize(
                                         filtered.filter((e) => e.occurredAt.startsWith(day)),
@@ -584,7 +605,7 @@ export default function App() {
                                 <span className="entry-info">
                                   <b>
                                     {cat?.name}
-                                    {e.type === 'refund' && <em>退款</em>}
+                                    {e.type === 'refund' && <em>{t('退款')}</em>}
                                   </b>
                                   <small>
                                     {e.note ||
@@ -609,13 +630,15 @@ export default function App() {
                     </div>
                   ) : (
                     <Empty
-                      title={all.length ? '这里暂时没有记录' : '第一笔，从今天开始'}
+                      title={all.length ? t('这里暂时没有记录') : t('第一笔，从今天开始')}
                       detail={
                         all.length
-                          ? '试试其他币种、日期或筛选条件。'
+                          ? t('试试其他币种、日期或筛选条件。')
                           : otherRecordCount > 0
-                            ? `当前账本暂无记录，其他账本共有 ${otherRecordCount} 笔记录。切换账本即可查看。`
-                            : '记下一笔小小的花费，让生活清晰一点。'
+                            ? t('当前账本暂无记录，其他账本共有 {0} 笔记录。切换账本即可查看。', [
+                                otherRecordCount,
+                              ])
+                            : t('记下一笔小小的花费，让生活清晰一点。')
                       }
                       action={
                         <div className="empty-actions">
@@ -624,12 +647,12 @@ export default function App() {
                             disabled={readonly}
                             onClick={() => (all.length ? clearFilters() : setEditor({}))}
                           >
-                            {all.length ? '重置筛选' : '记下第一笔'}
+                            {all.length ? t('重置筛选') : t('记下第一笔')}
                             <Icon name={all.length ? 'refund' : 'plus'} size={16} />
                           </button>
                           {!all.length && otherRecordCount > 0 && (
                             <button className="secondary" onClick={openSyncedBooks}>
-                              查看有记录的账本
+                              {t('查看有记录的账本')}
                             </button>
                           )}
                           {all.length > 0 && (
@@ -644,7 +667,7 @@ export default function App() {
                                 })
                               }
                             >
-                              查看最近记录
+                              {t('查看最近记录')}
                             </button>
                           )}
                         </div>
@@ -653,32 +676,35 @@ export default function App() {
                   )}
                   {filtered.length > limit && (
                     <button className="load-more" onClick={() => setLimit(limit + 30)}>
-                      再看 30 笔 <Icon name="down" size={16} />
+                      {t('再看 30 笔 ')}
+                      <Icon name="down" size={16} />
                     </button>
                   )}
                 </section>
                 <aside className="right-rail">
                   <section className="card little-card">
-                    <span className="tiny-label">记账小习惯</span>
+                    <span className="tiny-label">{t('记账小习惯')}</span>
                     <div className="habit-icon">
                       <Icon name="coffee" size={35} />
                     </div>
                     <h3>
-                      不用记得完美，
+                      {t('不用记得完美，')}
                       <br />
-                      记得开始就好。
+                      {t('记得开始就好。')}
                     </h3>
-                    <p>日常开销用人民币，旅行开销用当地币种。慢慢记，清楚看。</p>
+                    <p>{t('日常开销用人民币，旅行开销用当地币种。慢慢记，清楚看。')}</p>
                     <div className="local-line">
                       <Icon name="shield" size={15} />
-                      已保存的账目留在本机
+                      {t('已保存的账目留在本机')}
                     </div>
                   </section>
                   <button className="backup-nudge" onClick={() => setPanel('backup')}>
                     <Icon name="download" size={22} />
                     <span>
-                      <b>{state.backups[book.id] ? '给账本留一个副本' : '别忘了第一次备份'}</b>
-                      <small>换机时，把生活一起带走</small>
+                      <b>
+                        {state.backups[book.id] ? t('给账本留一个副本') : t('别忘了第一次备份')}
+                      </b>
+                      <small>{t('换机时，把生活一起带走')}</small>
                     </span>
                     <Icon name="right" size={17} />
                   </button>
@@ -695,33 +721,33 @@ export default function App() {
                     className={statsType === 'expense' ? 'active' : ''}
                     onClick={() => setStatsType('expense')}
                   >
-                    支出分析
+                    {t('支出分析')}
                   </button>
                   <button
                     className={statsType === 'income' ? 'active' : ''}
                     onClick={() => setStatsType('income')}
                   >
-                    收入分析
+                    {t('收入分析')}
                   </button>
                 </div>
               </div>
               <div className="stat-summary card">
                 <div>
-                  <span>{statsType === 'expense' ? '净支出' : '收入'}</span>
+                  <span>{statsType === 'expense' ? t('净支出') : t('收入')}</span>
                   <strong>
                     {money(statsType === 'expense' ? summary.net : summary.income, statsCurrency)}
                   </strong>
                 </div>
                 <div>
-                  <span>原始支出</span>
+                  <span>{t('原始支出')}</span>
                   <b>{money(summary.expense, statsCurrency)}</b>
                 </div>
                 <div>
-                  <span>退款</span>
+                  <span>{t('退款')}</span>
                   <b>{money(summary.refunds, statsCurrency)}</b>
                 </div>
                 <div>
-                  <span>收支结余</span>
+                  <span>{t('收支结余')}</span>
                   <b>{money(summary.balance, statsCurrency)}</b>
                 </div>
               </div>
@@ -739,7 +765,7 @@ export default function App() {
               <div className="stats-grid">
                 <section className="card">
                   <div className="section-heading">
-                    <h2>分类排行</h2>
+                    <h2>{t('分类排行')}</h2>
                     <span className="subtle">{statsCurrency}</span>
                   </div>
                   {ranked.length ? (
@@ -773,7 +799,8 @@ export default function App() {
                               />
                             </div>
                             <small>
-                              {c.count} 笔记录
+                              {c.count}
+                              {t(' 笔记录')}
                               <Icon name="right" size={12} />
                             </small>
                           </div>
@@ -782,17 +809,18 @@ export default function App() {
                     </div>
                   ) : (
                     <Empty
-                      title="还没有这个币种的记录"
-                      detail="切换币种，或记下第一笔收支。"
+                      title={t('还没有这个币种的记录')}
+                      detail={t('切换币种，或记下第一笔收支。')}
                       icon="stats"
                     />
                   )}
                 </section>
                 <section className="card">
                   <div className="section-heading">
-                    <h2>收支趋势</h2>
+                    <h2>{t('收支趋势')}</h2>
                     <span className="subtle">
-                      按{period === 'year' ? '月' : '日'} · {statsCurrency}
+                      {t('按')}
+                      {period === 'year' ? t('月') : t('日')}· {statsCurrency}
                     </span>
                   </div>
                   {trend.length ? (
@@ -800,7 +828,10 @@ export default function App() {
                       <div
                         className="trend-chart"
                         role="img"
-                        aria-label={`${statsCurrency} ${statsType === 'expense' ? '净支出' : '收入'}趋势，按日期显示`}
+                        aria-label={t('{0} {1}趋势，按日期显示', [
+                          statsCurrency,
+                          statsType === 'expense' ? t('净支出') : t('收入'),
+                        ])}
                       >
                         <div className="chart-zero" />
                         {trend.map(([day, value]) => (
@@ -821,20 +852,21 @@ export default function App() {
                         ))}
                       </div>
                       <p className="chart-note">
-                        上方为正值，下方为负值。退款较多时，净支出可能为负。
+                        {t('上方为正值，下方为负值。退款较多时，净支出可能为负。')}
                       </p>
                       <div className="trend-values">
                         {trend.map(([d, v]) => (
                           <span key={d}>
-                            {d} <b>{money(v, statsCurrency)}</b>
+                            {d}
+                            <b>{money(v, statsCurrency)}</b>
                           </span>
                         ))}
                       </div>
                     </>
                   ) : (
                     <Empty
-                      title="等生活留下第一条曲线"
-                      detail="记录收支后，在这里查看变化。"
+                      title={t('等生活留下第一条曲线')}
+                      detail={t('记录收支后，在这里查看变化。')}
                       icon="stats"
                     />
                   )}
@@ -847,19 +879,19 @@ export default function App() {
               <section className="card budget-hero">
                 <div className="budget-copy">
                   <span className="eyebrow">
-                    {month} / {CURRENCIES[statsCurrency].name}
+                    {month}/ {t(CURRENCIES[statsCurrency].name)}
                   </span>
                   <h2>
                     {budget
                       ? ratio > 1
-                        ? '稍微超了一点，下次再调整。'
-                        : '把钱花在，真正想要的地方。'
-                      : '为这个月，定一个小计划。'}
+                        ? t('稍微超了一点，下次再调整。')
+                        : t('把钱花在，真正想要的地方。')
+                      : t('为这个月，定一个小计划。')}
                   </h2>
                   <p>
                     {budget
-                      ? `本月总预算 ${money(budget.amount, statsCurrency)}`
-                      : `还没有设置 ${statsCurrency} 预算，其他币种额度不会在这里使用。`}
+                      ? t('本月总预算 {0}', [money(budget.amount, statsCurrency)])
+                      : t('还没有设置 {0} 预算，其他币种额度不会在这里使用。', [statsCurrency])}
                   </p>
                   <button
                     className="primary"
@@ -867,7 +899,7 @@ export default function App() {
                     disabled={readonly}
                   >
                     <Icon name={budget ? 'edit' : 'plus'} size={17} />
-                    {budget ? '调整预算' : '设置本月预算'}
+                    {budget ? t('调整预算') : t('设置本月预算')}
                   </button>
                 </div>
                 <div
@@ -879,13 +911,13 @@ export default function App() {
                     <small>
                       {budget
                         ? ratio > 1
-                          ? '已超支'
+                          ? t('已超支')
                           : ratio >= 1
-                            ? '已用完'
+                            ? t('已用完')
                             : ratio >= 0.8
-                              ? '接近预算'
-                              : '预算已使用'
-                        : '等待你的计划'}
+                              ? t('接近预算')
+                              : t('预算已使用')
+                        : t('等待你的计划')}
                     </small>
                   </div>
                 </div>
@@ -894,17 +926,17 @@ export default function App() {
                 <>
                   <div className="budget-metrics">
                     <div className="card">
-                      <span>已使用</span>
+                      <span>{t('已使用')}</span>
                       <strong>{money(used, statsCurrency)}</strong>
                     </div>
                     <div className="card">
-                      <span>{ratio > 1 ? '超支金额' : '剩余额度'}</span>
+                      <span>{ratio > 1 ? t('超支金额') : t('剩余额度')}</span>
                       <strong className={ratio > 1 ? 'expense-text' : 'income-text'}>
                         {money(Math.abs(budget.amount - used), statsCurrency)}
                       </strong>
                     </div>
                     <div className="card">
-                      <span>分类未分配</span>
+                      <span>{t('分类未分配')}</span>
                       <strong>
                         {money(
                           budget.amount -
@@ -916,8 +948,11 @@ export default function App() {
                   </div>
                   <section className="card">
                     <div className="section-heading">
-                      <h2>分类预算</h2>
-                      <span className="subtle">{Object.keys(budget.categories).length} 项</span>
+                      <h2>{t('分类预算')}</h2>
+                      <span className="subtle">
+                        {Object.keys(budget.categories).length}
+                        {t(' 项')}
+                      </span>
                     </div>
                     {Object.entries(budget.categories).length ? (
                       Object.entries(budget.categories).map(([id, amount]) => {
@@ -950,14 +985,16 @@ export default function App() {
                       })
                     ) : (
                       <Empty
-                        title="给重点开销留个额度"
-                        detail="分类预算是可选的，可以从餐饮、购物开始。"
+                        title={t('给重点开销留个额度')}
+                        detail={t('分类预算是可选的，可以从餐饮、购物开始。')}
                         icon="target"
                       />
                     )}
                   </section>
                   <p className="summary-footnote">
-                    退款按发生月份冲减；净支出为负时预算已用为零。各分类的已用之和可能不等于总预算已用。
+                    {t(
+                      '退款按发生月份冲减；净支出为负时预算已用为零。各分类的已用之和可能不等于总预算已用。',
+                    )}
                   </p>
                 </>
               )}
@@ -970,38 +1007,45 @@ export default function App() {
                   <Icon name="shield" size={32} />
                 </div>
                 <div>
-                  <h2>生活的细节，留在你的口袋里。</h2>
+                  <h2>{t('生活的细节，留在你的口袋里。')}</h2>
                   <p>
-                    默认仅保存在本机。可选择开启加密云同步；记账、统计和本地备份都可以离线完成。
+                    {t(
+                      '默认仅保存在本机。可选择开启加密云同步；记账、统计和本地备份都可以离线完成。',
+                    )}
                   </p>
                 </div>
               </section>
+              <section className="card language-card">
+                <LanguageSelector />
+              </section>
               <div className="settings-grid">
                 <section className="card">
-                  <h2 className="settings-title">我的账本</h2>
+                  <h2 className="settings-title">{t('我的账本')}</h2>
                   {[
                     {
                       icon: 'receipt',
-                      title: '常用模板',
-                      desc: '早餐、通勤、房租，预填后确认记账',
+                      title: t('常用模板'),
+                      desc: t('早餐、通勤、房租，预填后确认记账'),
                       panel: 'templates',
                     },
                     {
                       icon: 'book',
-                      title: '账本管理',
-                      desc: `${state.books.filter((b) => !b.deletedAt).length} 个本地账本 · 默认币种与常用币种`,
+                      title: t('账本管理'),
+                      desc: t('{0} 个本地账本 · 默认币种与常用币种', [
+                        state.books.filter((b) => !b.deletedAt).length,
+                      ]),
                       panel: 'books',
                     },
                     {
                       icon: 'folder',
-                      title: '分类与支付方式',
-                      desc: '整理你自己的生活分类',
+                      title: t('分类与支付方式'),
+                      desc: t('整理你自己的生活分类'),
                       panel: 'categories',
                     },
                     {
                       icon: 'trash',
-                      title: '回收站',
-                      desc: '已删除记录保留 30 天',
+                      title: t('回收站'),
+                      desc: t('已删除记录保留 30 天'),
                       panel: 'trash',
                     },
                   ].map((item) => (
@@ -1022,17 +1066,20 @@ export default function App() {
                   ))}
                 </section>
                 <section className="card">
-                  <h2 className="settings-title">数据与备份</h2>
+                  <h2 className="settings-title">{t('数据与备份')}</h2>
                   <button className="settings-row" onClick={() => setPanel('backup')}>
                     <span className="category-icon green">
                       <Icon name="download" />
                     </span>
                     <span>
-                      <b>导出、备份与恢复</b>
+                      <b>{t('导出、备份与恢复')}</b>
                       <small>
                         {state.backups[book.id]
-                          ? `最近生成 ${new Date(state.backups[book.id]).toLocaleDateString('zh-CN')}${book.updatedAt > state.backups[book.id] ? ' · 此后有新修改' : ''}`
-                          : '尚未生成当前账本备份'}
+                          ? t('最近生成 {0}{1}', [
+                              new Date(state.backups[book.id]).toLocaleDateString(getLocale()),
+                              book.updatedAt > state.backups[book.id] ? t(' · 此后有新修改') : '',
+                            ])
+                          : t('尚未生成当前账本备份')}
                       </small>
                     </span>
                     <Icon name="right" size={18} />
@@ -1040,7 +1087,9 @@ export default function App() {
                   <div className="settings-explainer">
                     <Icon name="info" size={17} />
                     <p>
-                      生成文件不代表已保存到手机外。卸载、手机遗失或损坏后，需要你留存的备份才能恢复。
+                      {t(
+                        '生成文件不代表已保存到手机外。卸载、手机遗失或损坏后，需要你留存的备份才能恢复。',
+                      )}
                     </p>
                   </div>
                   <button className="settings-row danger-text" onClick={() => setPanel('clear')}>
@@ -1048,8 +1097,8 @@ export default function App() {
                       <Icon name="trash" />
                     </span>
                     <span>
-                      <b>清空全部本地数据</b>
-                      <small>不可撤销，请先导出备份</small>
+                      <b>{t('清空全部本地数据')}</b>
+                      <small>{t('不可撤销，请先导出备份')}</small>
                     </span>
                     <Icon name="right" size={18} />
                   </button>
@@ -1058,23 +1107,26 @@ export default function App() {
               <SyncPanel onOpenBooks={openSyncedBooks} />
               <PwaPanel />
               <div className="about-note">
-                <b>口袋账本 {APP_VERSION}</b>
+                <b>
+                  {t('口袋账本 ')}
+                  {APP_VERSION}
+                </b>
                 <p>
                   {isNative
-                    ? '原生本地存储 · 加密 SQLite'
-                    : '网页应用 · 本地浏览器存储，云同步单独加密；本机存储未加密'}
+                    ? t('原生本地存储 · 加密 SQLite')
+                    : t('网页应用 · 本地浏览器存储，云同步单独加密；本机存储未加密')}
                   <br />
-                  同一设备的账本不做成员权限隔离。支付方式是标签，不管理余额。
+                  {t('同一设备的账本不做成员权限隔离。支付方式是标签，不管理余额。')}
                 </p>
               </div>
             </>
           )}
           <footer className="content-footer">
-            <span>小小记录，好好生活。</span>
+            <span>{t('小小记录，好好生活。')}</span>
             <SyncStatusButton onOpen={() => setPage('settings')} />
             <span>
               <Icon name="shield" size={13} />
-              本地保存
+              {t('本地保存')}
             </span>
           </footer>
         </div>
@@ -1087,12 +1139,12 @@ export default function App() {
             onClick={() => setPage(item.id)}
           >
             <Icon name={item.icon} size={22} />
-            <span>{item.label}</span>
+            <span>{t(item.label)}</span>
           </button>
         ))}
         <button
           className="mobile-add"
-          aria-label="记一笔"
+          aria-label={t('记一笔')}
           onClick={() => setEditor({})}
           disabled={readonly}
         >

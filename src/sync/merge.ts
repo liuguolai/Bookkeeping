@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { emptyState, validateState, type State } from '../model';
 import { bookOverview } from '../bookOverview';
 
@@ -16,7 +17,7 @@ export type Choice = 'local' | 'remote';
 export type Conflict = { key: string; label: string; local: unknown; remote: unknown };
 export class SyncConflict extends Error {
   constructor(public conflicts: Conflict[]) {
-    super('有修改冲突，请选择要保留的版本');
+    super(t('有修改冲突，请选择要保留的版本'));
   }
 }
 export function stable(value: unknown): string {
@@ -97,7 +98,7 @@ export function mergeStates(
       else {
         conflicts.push({
           key,
-          label: `${labels[name]} · ${lv?.name ?? rv?.name ?? lv?.note ?? rv?.note ?? id}`,
+          label: `${t(labels[name])} · ${lv?.name ?? rv?.name ?? lv?.note ?? rv?.note ?? id}`,
           local: lv ?? null,
           remote: rv ?? null,
         });
@@ -130,7 +131,7 @@ export function mergeStates(
         if (!choices[key])
           conflicts.push({
             key,
-            label: `${labels[name]}顺序`,
+            label: t('{0}顺序', [t(labels[name])]),
             local: lo.map((id) => l.get(id)?.name ?? id),
             remote: ro.map((id) => r.get(id)?.name ?? id),
           });
@@ -195,7 +196,10 @@ export function mergeStates(
         if (!choices[key])
           related.push({
             key,
-            label: `关联数据冲突 · ${local.books.find((b) => b.id === id)?.name ?? remote.books.find((b) => b.id === id)?.name}`,
+            label: t('关联数据冲突 · {0}', [
+              local.books.find((b) => b.id === id)?.name ??
+                remote.books.find((b) => b.id === id)?.name,
+            ]),
             local: ls,
             remote: rs,
           });
@@ -208,7 +212,7 @@ export function mergeStates(
     try {
       return cloudState(selected);
     } catch {
-      throw new Error('合并后超过账本或记录限制，请先导出备份并整理数据，再重试同步');
+      throw new Error(t('合并后超过账本或记录限制，请先导出备份并整理数据，再重试同步'));
     }
   }
 }

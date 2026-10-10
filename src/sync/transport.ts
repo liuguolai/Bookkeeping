@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { Capacitor, CapacitorHttp, type HttpOptions, type HttpResponse } from '@capacitor/core';
 
 // Public service origin only. Never put credentials or recovery keys in build configuration.
@@ -15,7 +16,7 @@ export function nativeSyncUrl(path: string, origin = NATIVE_SYNC_ORIGIN) {
     base.hash ||
     !/^\/api\/sync\/v1\/(vault|account(?:\/(?:challenge|login))?)$/.test(path)
   )
-    throw new Error('同步服务地址无效，请更新应用');
+    throw new Error(t('同步服务地址无效，请更新应用'));
   return new URL(path, base).href;
 }
 
@@ -49,7 +50,7 @@ export function createSyncRequest(
         .then((result) => {
           if (signal?.aborted) return;
           if (result.status >= 300 && result.status < 400)
-            throw new TypeError('同步服务发生重定向，请更新应用');
+            throw new TypeError(t('同步服务发生重定向，请更新应用'));
           resolve(
             new Response(
               [204, 205, 304].includes(result.status)
@@ -61,7 +62,7 @@ export function createSyncRequest(
             ),
           );
         })
-        .catch(() => reject(new TypeError('连接中断或超时，请稍后重试')))
+        .catch(() => reject(new TypeError(t('连接中断或超时，请稍后重试'))))
         .finally(() => signal?.removeEventListener('abort', abort));
     });
   };

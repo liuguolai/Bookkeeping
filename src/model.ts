@@ -1,3 +1,4 @@
+import { t as tr } from './i18n';
 import { z } from 'zod';
 import { CURRENCIES, type Currency } from './money';
 
@@ -136,7 +137,7 @@ export function validateState(input: unknown): State {
     input = { ...input, version: 2, templates: [] };
   const s = stateSchema.parse(input);
   const unique = (ids: string[]) => {
-    if (new Set(ids).size !== ids.length) throw new Error('数据中存在重复标识');
+    if (new Set(ids).size !== ids.length) throw new Error(tr('数据中存在重复标识'));
   };
   unique(s.books.map((b) => b.id));
   unique(s.categories.map((c) => c.id));
@@ -153,26 +154,28 @@ export function validateState(input: unknown): State {
   for (const b of s.books) {
     localTime(b.timezone);
     if (!b.common.includes(b.currency) || new Set(b.common).size !== b.common.length)
-      throw new Error('默认币种与常用币种不一致');
+      throw new Error(tr('默认币种与常用币种不一致'));
   }
-  if (s.activeBookId && !books.has(s.activeBookId)) throw new Error('当前账本不存在');
+  if (s.activeBookId && !books.has(s.activeBookId)) throw new Error(tr('当前账本不存在'));
   for (const c of [...s.categories, ...s.payments])
-    if (!books.has(c.bookId)) throw new Error('分类或支付方式引用了不存在的账本');
+    if (!books.has(c.bookId)) throw new Error(tr('分类或支付方式引用了不存在的账本'));
   const withinLimit = (amount: number, currency: Currency) => {
-    if (amount >= 10 ** (8 + CURRENCIES[currency].precision)) throw new Error('金额超出单笔范围');
+    if (amount >= 10 ** (8 + CURRENCIES[currency].precision))
+      throw new Error(tr('金额超出单笔范围'));
   };
   const refunded = new Map<string, number>();
   for (const e of s.entries) {
-    if (!books.has(e.bookId) || !validDate(e.occurredAt)) throw new Error('流水账本或日期不合法');
+    if (!books.has(e.bookId) || !validDate(e.occurredAt))
+      throw new Error(tr('流水账本或日期不合法'));
     const cat = cats.get(e.categoryId);
     if (
       !cat ||
       cat.bookId !== e.bookId ||
       cat.type !== (e.type === 'income' ? 'income' : 'expense')
     )
-      throw new Error('流水分类不合法');
+      throw new Error(tr('流水分类不合法'));
     if (e.paymentId && payments.get(e.paymentId)?.bookId !== e.bookId)
-      throw new Error('支付方式不属于当前账本');
+      throw new Error(tr('支付方式不属于当前账本'));
     withinLimit(e.amount, e.currency);
     if (e.type === 'refund') {
       const parent = e.originalId ? entries.get(e.originalId) : undefined;
@@ -184,28 +187,28 @@ export function validateState(input: unknown): State {
         parent.categoryId !== e.categoryId ||
         e.occurredAt < parent.occurredAt
       )
-        throw new Error('退款关联、币种或日期不合法');
+        throw new Error(tr('退款关联、币种或日期不合法'));
       if (!e.deletedAt) {
-        if (parent.deletedAt) throw new Error('有效退款不能关联已删除支出');
+        if (parent.deletedAt) throw new Error(tr('有效退款不能关联已删除支出'));
         refunded.set(parent.id, (refunded.get(parent.id) ?? 0) + e.amount);
       }
-    } else if (e.originalId) throw new Error('普通流水不能有关联退款字段');
+    } else if (e.originalId) throw new Error(tr('普通流水不能有关联退款字段'));
   }
   for (const [originalId, total] of refunded)
-    if (total > entries.get(originalId)!.amount) throw new Error('退款总额超过原支出');
+    if (total > entries.get(originalId)!.amount) throw new Error(tr('退款总额超过原支出'));
   for (const b of s.budgets) {
-    if (!books.has(b.bookId)) throw new Error('预算账本不存在');
+    if (!books.has(b.bookId)) throw new Error(tr('预算账本不存在'));
     withinLimit(b.amount, b.currency);
     let total = 0;
     for (const [catId, amount] of Object.entries(b.categories)) {
       const cat = cats.get(catId);
       if (!cat || cat.bookId !== b.bookId || cat.type !== 'expense')
-        throw new Error('预算分类不合法');
+        throw new Error(tr('预算分类不合法'));
       total += amount;
     }
-    if (total > b.amount) throw new Error('分类预算之和不能超过总预算');
+    if (total > b.amount) throw new Error(tr('分类预算之和不能超过总预算'));
   }
-  for (const d of s.drafts) if (!books.has(d.bookId)) throw new Error('草稿账本不存在');
+  for (const d of s.drafts) if (!books.has(d.bookId)) throw new Error(tr('草稿账本不存在'));
   for (const t of s.templates) {
     const category = cats.get(t.categoryId);
     if (
@@ -214,9 +217,9 @@ export function validateState(input: unknown): State {
       category.bookId !== t.bookId ||
       category.type !== t.type
     )
-      throw new Error('模板账本或分类不合法');
+      throw new Error(tr('模板账本或分类不合法'));
     if (t.paymentId && payments.get(t.paymentId)?.bookId !== t.bookId)
-      throw new Error('模板支付方式不属于当前账本');
+      throw new Error(tr('模板支付方式不属于当前账本'));
     if (t.amount !== undefined) withinLimit(t.amount, t.currency);
   }
   return s;

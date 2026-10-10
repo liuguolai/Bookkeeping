@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { Capacitor } from '@capacitor/core';
 export async function saveFile(
   name: string,
@@ -16,11 +17,11 @@ export async function saveFile(
       recursive: true,
     });
     try {
-      await Share.share({ title: name, url: file.uri, dialogTitle: '保存或分享文件' });
+      await Share.share({ title: name, url: file.uri, dialogTitle: t('保存或分享文件') });
     } catch {
-      throw new Error('保存或分享未完成，请重试');
+      throw new Error(t('保存或分享未完成，请重试'));
     }
-    return '已交给系统保存或分享，请确认文件已保存';
+    return t('已交给系统保存或分享，请确认文件已保存');
   }
   const url = URL.createObjectURL(new Blob([text], { type: mime }));
   const a = document.createElement('a');
@@ -28,7 +29,7 @@ export async function saveFile(
   a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
-  return '已发起下载，请在下载目录确认文件';
+  return t('已发起下载，请在下载目录确认文件');
 }
 export async function clearExportCache() {
   if (!Capacitor.isNativePlatform()) return;

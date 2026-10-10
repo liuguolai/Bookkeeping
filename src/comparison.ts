@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { type State, type Entry, localTime } from './model';
 import { summarize } from './domain';
 import { addMoney, money, type Currency } from './money';
@@ -30,9 +31,9 @@ export function monthComparison(
   today?: string,
 ) {
   const book = s.books.find((b) => b.id === bookId);
-  if (!book) throw new Error('账本不存在');
+  if (!book) throw new Error(t('账本不存在'));
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month.startsWith('0000'))
-    throw new Error('月份无效');
+    throw new Error(t('月份无效'));
   const date = today ?? localTime(book.timezone).slice(0, 10);
   const previous = previousMonth(month);
   const partial = samePeriod && month === date.slice(0, 7);
@@ -114,14 +115,16 @@ export function changeText(
 ) {
   const delta = addMoney([current, -previous]);
   const amount =
-    delta === 0 ? '持平' : `${delta > 0 ? '增加' : '减少'} ${money(Math.abs(delta), currency)}`;
+    delta === 0
+      ? t('持平')
+      : `${delta > 0 ? t('增加') : t('减少')} ${money(Math.abs(delta), currency)}`;
   const percent =
     previousCount === 0
-      ? '上期无记录'
+      ? t('上期无记录')
       : previous === 0
-        ? '上期为零'
+        ? t('上期为零')
         : previous < 0
-          ? '上期为负'
+          ? t('上期为负')
           : `${((Math.abs(delta) / previous) * 100).toFixed(1)}%`;
   return `${amount} · ${percent}`;
 }

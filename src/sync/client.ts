@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { emptyState } from '../model';
 import { repository, type Repository } from '../storage';
 import { syncRequest } from './transport';
@@ -80,7 +81,7 @@ export class SyncClient {
       syncedAt: meta?.syncedAt ?? 0,
       summary: meta?.syncedAt ? syncSummary(meta.base) : null,
       ...(!meta?.secret
-        ? { message: meta ? '已断开，账目保留在本机' : '未开启云同步', conflicts: [] }
+        ? { message: meta ? t('已断开，账目保留在本机') : t('未开启云同步'), conflicts: [] }
         : {}),
     });
   }
@@ -109,22 +110,22 @@ export class SyncClient {
         signal: controller.signal,
       });
       if (!response.headers.get('Content-Type')?.includes('application/json'))
-        throw new Error('当前服务尚未部署云同步接口，本地记账可继续使用');
+        throw new Error(t('当前服务尚未部署云同步接口，本地记账可继续使用'));
       const data = await response.json();
-      if (!response.ok) throw new ApiError(data.error ?? '同步请求失败', response.status);
+      if (!response.ok) throw new ApiError(data.error ?? t('同步请求失败'), response.status);
       if (
         method !== 'POST' &&
         (!Number.isSafeInteger(data.revision) ||
           data.revision < 0 ||
           !Number.isFinite(data.updated_at))
       )
-        throw new Error('云服务返回了不支持的数据');
+        throw new Error(t('云服务返回了不支持的数据'));
       if (
         method === 'GET' &&
         ((typeof data.payload !== 'string' && data.payload !== null) ||
           (data.payload === null && data.revision !== 0))
       )
-        throw new Error('云端快照缺失或格式错误，本地数据保留，请联系管理员检查数据库');
+        throw new Error(t('云端快照缺失或格式错误，本地数据保留，请联系管理员检查数据库'));
       return data;
     } finally {
       clearTimeout(timer);
@@ -137,7 +138,7 @@ export class SyncClient {
     return fn(); // IndexedDB and cloud compare-and-swap remain the correctness boundary.
   }
   async connect(secret: string, setup?: string) {
-    if (this.status.busy) throw new Error('请等待当前同步完成');
+    if (this.status.busy) throw new Error(t('请等待当前同步完成'));
     this.set({ busy: true });
     try {
       await this.lock(async () => {
@@ -145,7 +146,9 @@ export class SyncClient {
           before = await this.repo.syncRead();
         if (before.meta?.accountId && before.meta.accountId !== identity.accountId)
           throw new Error(
-            '本机账目已关联其他同步空间。请先导出备份并清空本机，再连接其他密钥，避免混入不同账号的数据',
+            t(
+              '本机账目已关联其他同步空间。请先导出备份并清空本机，再连接其他密钥，避免混入不同账号的数据',
+            ),
           );
         if (setup !== undefined) await this.api('POST', identity.secret, undefined, setup);
         const remote = await this.api('GET', identity.secret);
@@ -198,14 +201,14 @@ export class SyncClient {
         return;
       }
       if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-        this.set({ message: '离线中，修改已保存在本机，联网后同步' });
+        this.set({ message: t('离线中，修改已保存在本机，联网后同步') });
         return;
       }
       this.set({
         busy: true,
         connected: true,
         accountId: before.meta.accountId,
-        message: '正在同步…',
+        message: t('正在同步…'),
       });
       await this.exchange(before, resolution);
       this.failures = 0;
@@ -216,10 +219,10 @@ export class SyncClient {
         this.set({
           message:
             error instanceof TypeError || (error instanceof Error && error.name === 'AbortError')
-              ? '连接中断或超时，修改仍保存在本机，稍后重试'
+              ? t('连接中断或超时，修改仍保存在本机，稍后重试')
               : error instanceof Error
                 ? error.message
-                : '同步失败，请稍后重试',
+                : t('同步失败，请稍后重试'),
         });
       })
       .finally(() => {
@@ -233,7 +236,7 @@ export class SyncClient {
       local = before.state ?? emptyState(),
       remote = await this.api('GET', meta.secret!);
     if (remote.revision < meta.cloudRevision)
-      throw new Error('云端版本发生回退，本地数据保留，请先导出备份并联系管理员检查数据库');
+      throw new Error(t('云端版本发生回退，本地数据保留，请先导出备份并联系管理员检查数据库'));
     const cloud = remote.payload ? await decryptState(remote.payload, meta.secret!) : emptyState();
     const choices =
       resolution &&
@@ -259,7 +262,7 @@ export class SyncClient {
       current.meta?.generation !== meta.generation ||
       (current.state?.revision ?? 0) !== local.revision
     )
-      throw new Error('本机有新修改，将在下一次同步时合并');
+      throw new Error(t('本机有新修改，将在下一次同步时合并'));
     let acknowledgedRevision = remote.revision;
     if (stable(merged) !== stable(cloud)) {
       const uploaded = await this.api('PUT', meta.secret!, {
@@ -281,7 +284,7 @@ export class SyncClient {
       changed ? applyCloud(local, merged) : undefined,
     );
     this.set({
-      message: '已同步',
+      message: t('已同步'),
       syncedAt: Date.now(),
       conflicts: [],
       summary: syncSummary(merged),
@@ -295,7 +298,7 @@ export class SyncClient {
   start() {
     void this.refresh()
       .then(() => this.sync())
-      .catch(() => this.set({ message: '同步配置读取失败，本地记账不受影响' }));
+      .catch(() => this.set({ message: t('同步配置读取失败，本地记账不受影响') }));
     const unsubscribe = this.repo.subscribe((kind) => {
       if (kind === 'clear') {
         this.abort?.abort();
@@ -303,7 +306,7 @@ export class SyncClient {
         void this.refresh().catch(() => {});
       }
       if (kind === 'local') {
-        if (this.status.connected) this.set({ message: '修改已保存在本机，等待同步' });
+        if (this.status.connected) this.set({ message: t('修改已保存在本机，等待同步') });
         this.schedule();
       }
       if (kind === 'sync') void this.refresh().catch(() => {});
@@ -311,7 +314,7 @@ export class SyncClient {
     const wake = () => {
       if (document.visibilityState === 'visible') this.schedule(500);
     };
-    const offline = () => this.set({ message: '离线中，修改已保存在本机，联网后同步' });
+    const offline = () => this.set({ message: t('离线中，修改已保存在本机，联网后同步') });
     const resume = () => this.schedule(500);
     window.addEventListener('ledger-resume', resume);
     window.addEventListener('online', wake);

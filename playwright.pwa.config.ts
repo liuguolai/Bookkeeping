@@ -7,6 +7,7 @@ export default defineConfig({
   reporter: 'list',
   outputDir: 'test-results-pwa',
   use: {
+    locale: 'zh-CN',
     baseURL: 'http://127.0.0.1:4175',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

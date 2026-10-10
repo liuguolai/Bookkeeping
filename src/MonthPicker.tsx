@@ -1,3 +1,4 @@
+import { t, useLocale, monthText, monthName } from './i18n';
 import { useState } from 'react';
 import { Dialog, Icon, Label } from './ui';
 
@@ -10,6 +11,7 @@ export function MonthPicker({
   current: string;
   onChange: (value: string) => void;
 }) {
+  useLocale();
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(value.slice(0, 4));
   const yearNumber = Number(year);
@@ -29,7 +31,7 @@ export function MonthPicker({
       <div className="month-picker">
         <button
           className="icon-button"
-          aria-label="上一个月"
+          aria-label={t('上一个月')}
           disabled={value === '0001-01'}
           onClick={() => shift(-1)}
         >
@@ -37,7 +39,7 @@ export function MonthPicker({
         </button>
         <button
           className="month-trigger"
-          aria-label="选择年月"
+          aria-label={t('选择年月')}
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => {
@@ -46,14 +48,12 @@ export function MonthPicker({
           }}
         >
           <Icon name="calendar" size={17} />
-          <span className="month-label">
-            {value.slice(0, 4)}年{Number(value.slice(5))}月
-          </span>
+          <span className="month-label">{monthText(value)}</span>
           <Icon name="down" size={15} />
         </button>
         <button
           className="icon-button"
-          aria-label="下一个月"
+          aria-label={t('下一个月')}
           disabled={value === '9999-12'}
           onClick={() => shift(1)}
         >
@@ -61,20 +61,20 @@ export function MonthPicker({
         </button>
       </div>
       {open && (
-        <Dialog title="选择年月" compact onClose={() => setOpen(false)}>
-          <p className="dialog-copy">直接输入年份，再点选月份。</p>
+        <Dialog title={t('选择年月')} compact onClose={() => setOpen(false)}>
+          <p className="dialog-copy">{t('直接输入年份，再点选月份。')}</p>
           <div className="year-controls">
             <button
               className="icon-button"
-              aria-label="上一年"
+              aria-label={t('上一年')}
               disabled={!validYear || yearNumber === 1}
               onClick={() => setYear(String(yearNumber - 1))}
             >
               <Icon name="left" />
             </button>
-            <Label title="年份">
+            <Label title={t('年份')}>
               <input
-                aria-label="年份"
+                aria-label={t('年份')}
                 type="number"
                 inputMode="numeric"
                 min={1}
@@ -86,15 +86,15 @@ export function MonthPicker({
             </Label>
             <button
               className="icon-button"
-              aria-label="下一年"
+              aria-label={t('下一年')}
               disabled={!validYear || yearNumber === 9999}
               onClick={() => setYear(String(yearNumber + 1))}
             >
               <Icon name="right" />
             </button>
           </div>
-          {!validYear && <p role="alert">请输入 1 至 9999 的整数年份</p>}
-          <div className="month-grid" role="group" aria-label="月份">
+          {!validYear && <p role="alert">{t('请输入 1 至 9999 的整数年份')}</p>}
+          <div className="month-grid" role="group" aria-label={t('月份')}>
             {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
               <button
                 key={month}
@@ -104,7 +104,7 @@ export function MonthPicker({
                 }
                 onClick={() => choose(month)}
               >
-                {month}月
+                {monthName(month)}
               </button>
             ))}
           </div>
@@ -115,7 +115,7 @@ export function MonthPicker({
               setOpen(false);
             }}
           >
-            回到本月
+            {t('回到本月')}
           </button>
         </Dialog>
       )}
