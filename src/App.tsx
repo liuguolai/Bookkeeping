@@ -9,6 +9,7 @@ import { bookEntries, summarize, inheritBudgets } from './domain';
 import { CURRENCIES, currencyCodes, money, type Currency } from './money';
 import { Icon, Empty } from './ui';
 import { isNative } from './storage';
+import { APP_VERSION } from './protection';
 import { EntryEditor } from './EntryEditor';
 import { MonthPicker } from './MonthPicker';
 import { backupDue } from './experience';
@@ -1057,7 +1058,7 @@ export default function App() {
               <SyncPanel onOpenBooks={openSyncedBooks} />
               <PwaPanel />
               <div className="about-note">
-                <b>口袋账本 0.1</b>
+                <b>口袋账本 {APP_VERSION}</b>
                 <p>
                   {isNative
                     ? '原生本地存储 · 加密 SQLite'

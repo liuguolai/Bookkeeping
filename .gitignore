@@ -31,8 +31,11 @@ test-results-sync/
 *.sqlite3
 *.db
 
-# Keep only the current Android deliverable; old builds remain local
+# Explicitly retained Android deliverables; other builds remain local
 artifacts/*.apk
 artifacts/*.apk.sha256
 !artifacts/pocket-ledger-0.1.8-debug.apk
 !artifacts/pocket-ledger-0.1.8-debug.apk.sha256
+!artifacts/pocket-ledger-0.2.3-debug.apk
+!artifacts/pocket-ledger-0.2.3-debug.apk.sha256
+artifacts/*.apk.idsig

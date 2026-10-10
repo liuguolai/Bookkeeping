@@ -1,5 +1,7 @@
 import { emptyState } from '../model';
-import { repository, isNative, type Repository } from '../storage';
+import { repository, type Repository } from '../storage';
+import { syncRequest } from './transport';
+export { syncSupported } from './transport';
 import { credentials, encryptState, decryptState } from './crypto';
 import {
   applyCloud,
@@ -57,7 +59,7 @@ export class SyncClient {
   private failures = 0;
   constructor(
     private repo: Repository,
-    private request: typeof fetch = (...args) => fetch(...args),
+    private request: typeof fetch = syncRequest,
   ) {}
   subscribe = (fn: () => void) => {
     this.listeners.add(fn);
@@ -107,7 +109,7 @@ export class SyncClient {
         signal: controller.signal,
       });
       if (!response.headers.get('Content-Type')?.includes('application/json'))
-        throw new Error('当前网站尚未部署云同步服务，本地记账可继续使用');
+        throw new Error('当前服务尚未部署云同步接口，本地记账可继续使用');
       const data = await response.json();
       if (!response.ok) throw new ApiError(data.error ?? '同步请求失败', response.status);
       if (
@@ -310,6 +312,8 @@ export class SyncClient {
       if (document.visibilityState === 'visible') this.schedule(500);
     };
     const offline = () => this.set({ message: '离线中，修改已保存在本机，联网后同步' });
+    const resume = () => this.schedule(500);
+    window.addEventListener('ledger-resume', resume);
     window.addEventListener('online', wake);
     window.addEventListener('offline', offline);
     document.addEventListener('visibilitychange', wake);
@@ -324,9 +328,9 @@ export class SyncClient {
       this.abort?.abort();
       window.removeEventListener('online', wake);
       window.removeEventListener('offline', offline);
+      window.removeEventListener('ledger-resume', resume);
       document.removeEventListener('visibilitychange', wake);
     };
   }
 }
 export const syncClient = new SyncClient(repository);
-export const syncSupported = !isNative;

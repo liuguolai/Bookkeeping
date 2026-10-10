@@ -69,7 +69,7 @@ export function Welcome() {
         </div>
       </div>
       <div className="welcome-options">
-        {!isNative && <SyncPanel onboarding />}
+        <SyncPanel onboarding />
         <form
           className="welcome-card"
           onSubmit={async (e) => {

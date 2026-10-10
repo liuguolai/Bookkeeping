@@ -1,4 +1,5 @@
 import { credentials } from './crypto';
+import { syncRequest } from './transport';
 
 const encoder = new TextEncoder();
 const ITERATIONS = 600_000;
@@ -76,7 +77,7 @@ export async function wrapSyncKey(username: string, password: string, secret: st
 }
 export type AccountInfo = { username: string; revision: number };
 export class AccountClient {
-  constructor(private request: typeof fetch = (...args) => fetch(...args)) {}
+  constructor(private request: typeof fetch = syncRequest) {}
   private async api(path: string, method: string, input?: object, secret?: string) {
     const controller = new AbortController(),
       timer = setTimeout(() => controller.abort(), 20000);

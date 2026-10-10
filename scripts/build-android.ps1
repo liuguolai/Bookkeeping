@@ -2,7 +2,8 @@ param(
   [string]$SdkPath = 'D:\Android\Sdk',
   [string]$JavaHome = '',
   [string]$GradleHome = '',
-  [string]$InitScript = ''
+  [string]$InitScript = '',
+  [string]$DebugKeystore = ''
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -33,5 +34,11 @@ try {
   $appVersion = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
   $artifactPath = "artifacts\pocket-ledger-$appVersion-debug.apk"
   Copy-Item -LiteralPath 'android\app\build\outputs\apk\debug\app-debug.apk' -Destination $artifactPath -Force
+  if ($DebugKeystore) {
+    $signer = Get-ChildItem -LiteralPath (Join-Path $SdkPath 'build-tools') -Directory |
+      Sort-Object Name -Descending | Select-Object -First 1
+    & (Join-Path $JavaHome 'bin\java.exe') -jar (Join-Path $signer.FullName 'lib\apksigner.jar') sign --ks (Resolve-Path -LiteralPath $DebugKeystore).Path --ks-pass pass:android --key-pass pass:android $artifactPath
+    if ($LASTEXITCODE -ne 0) { throw 'Debug APK signing failed' }
+  }
   Get-FileHash -LiteralPath $artifactPath -Algorithm SHA256
 } finally { Pop-Location }

@@ -39,6 +39,7 @@
     </application>
 
     <!-- Permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Encryption uses secure storage, not fingerprint authentication. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" tools:node="remove" />

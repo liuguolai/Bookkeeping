@@ -8,6 +8,8 @@ import { money, currencyCodes, type Currency } from './money';
 import type { State } from './model';
 import { bookOverview } from './bookOverview';
 import { AccountAccess } from './AccountAccess';
+import { isNative } from './storage';
+import { NATIVE_SYNC_ORIGIN } from './sync/transport';
 
 function VersionContent({ value, state }: { value: unknown; state: State }) {
   if (value === null) return <p>已永久删除</p>;
@@ -114,12 +116,12 @@ export function SyncPanel({
   const othersWithRecords = overview.filter(
     (row) => row.book.id !== active?.book.id && row.count > 0,
   );
-  const localPreview = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  const localPreview = !isNative && ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   if (!syncSupported)
     return (
       <section className="card sync-panel">
         <h2>云同步</h2>
-        <p>云同步支持网页版及安装到桌面的 PWA。当前原生应用继续使用本地加密存储和文件备份。</p>
+        <p>此平台暂未接入云同步，可继续使用本地加密存储和文件备份。</p>
       </section>
     );
   const close = () => {
@@ -140,6 +142,9 @@ export function SyncPanel({
         <span className="subtle">可选 · 加密上传</span>
       </div>
       <p role="status">{status.message}</p>
+      {isNative && (
+        <p className="subtle">与网页版共用账号和账本：{new URL(NATIVE_SYNC_ORIGIN).hostname}</p>
+      )}
       {onboarding && <p>换手机或在另一台设备使用，请先连接已有空间。无需先创建空账本。</p>}
       {localPreview && (
         <p className="sync-notice">

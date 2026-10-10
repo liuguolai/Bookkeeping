@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { nativeSqlite } from './helpers/native-sqlite';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import worker, { type Env } from '../worker';
 import { BrowserPersistence, Repository } from '../src/storage';
@@ -55,10 +56,9 @@ function add(s: State, note: string, amount = '12.30') {
     occurredAt: localTime(),
   });
 }
-function device(request: typeof fetch) {
-  const repo = new Repository(new BrowserPersistence(uid()));
-  return { repo, sync: new SyncClient(repo, request) };
-}
+vi.mock('@capacitor-community/sqlite', () => ({
+  CapacitorSQLite: { closeConnection: async () => {}, clearEncryptionSecret: async () => {} },
+}));
 describe('encrypted cloud data', () => {
   it('rejects snapshots beyond the advertised cloud capacity without truncation', async () => {
     const s = base(),
@@ -228,239 +228,252 @@ describe('Worker auth and atomic writes against SQLite', () => {
     expect(await status.json()).toEqual({ enabled: false, registration: false });
   });
 });
-describe('complete synchronization with independent IndexedDB devices', () => {
-  it('rejects missing cloud payloads and rolled-back cloud versions without applying deletions', async () => {
-    const { request, db } = backend();
-    let broken = false;
-    const a = device(async (url, options) =>
-      broken && options?.method === 'GET'
-        ? Response.json({ revision: 1, updated_at: Date.now() })
-        : request(url, options),
-    );
-    const key = newSyncKey();
-    await a.repo.transaction((s) => {
-      createBook(s, '日常', 'CNY');
-      add(s, '保留');
-    });
-    await a.sync.connect(key, 'test-create-code');
-    broken = true;
-    await a.sync.sync();
-    expect(a.sync.status.message).toContain('快照缺失');
-    expect((await a.repo.load()).entries).toHaveLength(1);
-    broken = false;
-    db.prepare('UPDATE sync_vaults SET revision = 0, payload = NULL').run();
-    await a.sync.sync();
-    expect(a.sync.status.message).toContain('版本发生回退');
-    expect((await a.repo.load()).entries).toHaveLength(1);
-    db.close();
-  });
-  it('joins from an empty device, merges offline additions and creates recoverable snapshots', async () => {
-    const { request, db } = backend(),
-      a = device(request),
-      b = device(request),
-      key = newSyncKey();
-    await a.repo.transaction((s) => {
-      createBook(s, '日常', 'CNY');
-      add(s, '第一笔');
-    });
-    await a.sync.connect(key, 'test-create-code');
-    await b.sync.connect(key);
-    expect((await b.repo.load()).entries).toHaveLength(1);
-    await a.repo.transaction((s) => {
-      add(s, '离线 A');
-    });
-    await b.repo.transaction((s) => {
-      add(s, '离线 B');
-    });
-    await a.sync.sync();
-    await b.sync.sync();
-    await a.sync.sync();
-    expect((await a.repo.load()).entries).toHaveLength(3);
-    expect(cloudState(await a.repo.load())).toEqual(cloudState(await b.repo.load()));
-    const history = await a.repo.snapshots();
-    expect(history.length).toBeGreaterThan(0);
-    expect(JSON.parse(history[0].data).entries).toHaveLength(2);
-    await b.sync.sync();
-    expect((await b.repo.load()).entries).toHaveLength(3);
-    db.close();
-  });
-  it('survives a lost PUT response, offline failure, reload, and later retry without duplicates', async () => {
-    const { request, db } = backend();
-    let lose = false,
-      offline = false;
-    const flaky: typeof fetch = async (url, options) => {
-      if (offline) throw new TypeError('offline');
-      const response = await request(url, options);
-      if (lose && options?.method === 'PUT') {
-        lose = false;
-        throw new TypeError('response lost');
-      }
-      return response;
-    };
-    const a = device(flaky),
-      key = newSyncKey();
-    await a.repo.transaction((s) => {
-      createBook(s, '日常', 'CNY');
-    });
-    await a.sync.connect(key, 'test-create-code');
-    await a.repo.transaction((s) => {
-      add(s, '重试');
-    });
-    lose = true;
-    await a.sync.sync();
-    expect(a.sync.status.message).toContain('连接中断');
-    offline = true;
-    await a.sync.sync();
-    expect((await a.repo.load()).entries).toHaveLength(1);
-    offline = false;
-    const reloaded = new SyncClient(a.repo, flaky);
-    await reloaded.sync();
-    expect(reloaded.status.message).toBe('已同步');
-    const b = device(request);
-    await b.sync.connect(key);
-    expect((await b.repo.load()).entries).toHaveLength(1);
-    db.close();
-  });
-  it('does not acknowledge or overwrite local edits made during upload', async () => {
-    const { request, db } = backend();
-    let duringUpload: (() => Promise<void>) | undefined;
-    const wrapped: typeof fetch = async (url, options) => {
-      const result = await request(url, options);
-      if (options?.method === 'PUT' && duringUpload) {
-        const fn = duringUpload;
-        duringUpload = undefined;
-        await fn();
-      }
-      return result;
-    };
-    const a = device(wrapped),
-      key = newSyncKey();
-    await a.repo.transaction((s) => {
-      createBook(s, '日常', 'CNY');
-    });
-    await a.sync.connect(key, 'test-create-code');
-    await a.repo.transaction((s) => {
-      add(s, '上传中');
-    });
-    duringUpload = async () => {
+describe.each(['IndexedDB', 'SQLite'] as const)(
+  'complete synchronization with independent %s devices',
+  (storage) => {
+    const databases: DatabaseSync[] = [];
+    afterEach(() => databases.splice(0).forEach((db) => db.close()));
+    function device(request: typeof fetch) {
+      const native = storage === 'SQLite' ? nativeSqlite() : null;
+      if (native) databases.push(native.db);
+      const repo = new Repository(native?.persistence ?? new BrowserPersistence(uid()));
+      return { repo, sync: new SyncClient(repo, request) };
+    }
+    it('rejects missing cloud payloads and rolled-back cloud versions without applying deletions', async () => {
+      const { request, db } = backend();
+      let broken = false;
+      const a = device(async (url, options) =>
+        broken && options?.method === 'GET'
+          ? Response.json({ revision: 1, updated_at: Date.now() })
+          : request(url, options),
+      );
+      const key = newSyncKey();
       await a.repo.transaction((s) => {
-        add(s, '新修改');
+        createBook(s, '日常', 'CNY');
+        add(s, '保留');
       });
-    };
-    await a.sync.sync();
-    expect((await a.repo.load()).entries).toHaveLength(2);
-    await a.sync.sync();
-    const b = device(request);
-    await b.sync.connect(key);
-    expect((await b.repo.load()).entries).toHaveLength(2);
-    db.close();
-  });
-  it('keeps conflicts in both places, applies chosen row only, and rejects stale choices', async () => {
-    const { request, db } = backend(),
-      a = device(request),
-      b = device(request),
-      key = newSyncKey();
-    await a.repo.transaction((s) => {
-      createBook(s, '日常', 'CNY');
-      add(s, '原始');
+      await a.sync.connect(key, 'test-create-code');
+      broken = true;
+      await a.sync.sync();
+      expect(a.sync.status.message).toContain('快照缺失');
+      expect((await a.repo.load()).entries).toHaveLength(1);
+      broken = false;
+      db.prepare('UPDATE sync_vaults SET revision = 0, payload = NULL').run();
+      await a.sync.sync();
+      expect(a.sync.status.message).toContain('版本发生回退');
+      expect((await a.repo.load()).entries).toHaveLength(1);
+      db.close();
     });
-    await a.sync.connect(key, 'test-create-code');
-    await b.sync.connect(key);
-    await a.repo.transaction((s) => {
-      s.entries[0].note = 'A';
+    it('joins from an empty device, merges offline additions and creates recoverable snapshots', async () => {
+      const { request, db } = backend(),
+        a = device(request),
+        b = device(request),
+        key = newSyncKey();
+      await a.repo.transaction((s) => {
+        createBook(s, '日常', 'CNY');
+        add(s, '第一笔');
+      });
+      await a.sync.connect(key, 'test-create-code');
+      await b.sync.connect(key);
+      expect((await b.repo.load()).entries).toHaveLength(1);
+      await a.repo.transaction((s) => {
+        add(s, '离线 A');
+      });
+      await b.repo.transaction((s) => {
+        add(s, '离线 B');
+      });
+      await a.sync.sync();
+      await b.sync.sync();
+      await a.sync.sync();
+      expect((await a.repo.load()).entries).toHaveLength(3);
+      expect(cloudState(await a.repo.load())).toEqual(cloudState(await b.repo.load()));
+      const history = await a.repo.snapshots();
+      expect(history.length).toBeGreaterThan(0);
+      expect(JSON.parse(history[0].data).entries).toHaveLength(2);
+      await b.sync.sync();
+      expect((await b.repo.load()).entries).toHaveLength(3);
+      db.close();
     });
-    await b.repo.transaction((s) => {
-      s.entries[0].note = 'B';
+    it('survives a lost PUT response, offline failure, reload, and later retry without duplicates', async () => {
+      const { request, db } = backend();
+      let lose = false,
+        offline = false;
+      const flaky: typeof fetch = async (url, options) => {
+        if (offline) throw new TypeError('offline');
+        const response = await request(url, options);
+        if (lose && options?.method === 'PUT') {
+          lose = false;
+          throw new TypeError('response lost');
+        }
+        return response;
+      };
+      const a = device(flaky),
+        key = newSyncKey();
+      await a.repo.transaction((s) => {
+        createBook(s, '日常', 'CNY');
+      });
+      await a.sync.connect(key, 'test-create-code');
+      await a.repo.transaction((s) => {
+        add(s, '重试');
+      });
+      lose = true;
+      await a.sync.sync();
+      expect(a.sync.status.message).toContain('连接中断');
+      offline = true;
+      await a.sync.sync();
+      expect((await a.repo.load()).entries).toHaveLength(1);
+      offline = false;
+      const reloaded = new SyncClient(a.repo, flaky);
+      await reloaded.sync();
+      expect(reloaded.status.message).toBe('已同步');
+      const b = device(request);
+      await b.sync.connect(key);
+      expect((await b.repo.load()).entries).toHaveLength(1);
+      db.close();
     });
-    await a.sync.sync();
-    await b.sync.sync();
-    expect(b.sync.status.conflicts).toHaveLength(1);
-    expect((await b.repo.load()).entries[0].note).toBe('B');
-    const stale = {
-      localRevision: b.sync.status.localRevision,
-      remoteRevision: b.sync.status.remoteRevision,
-      choices: { [b.sync.status.conflicts[0].key]: 'remote' as const },
-    };
-    await b.repo.transaction((s) => {
-      s.entries[0].note = 'B2';
+    it('does not acknowledge or overwrite local edits made during upload', async () => {
+      const { request, db } = backend();
+      let duringUpload: (() => Promise<void>) | undefined;
+      const wrapped: typeof fetch = async (url, options) => {
+        const result = await request(url, options);
+        if (options?.method === 'PUT' && duringUpload) {
+          const fn = duringUpload;
+          duringUpload = undefined;
+          await fn();
+        }
+        return result;
+      };
+      const a = device(wrapped),
+        key = newSyncKey();
+      await a.repo.transaction((s) => {
+        createBook(s, '日常', 'CNY');
+      });
+      await a.sync.connect(key, 'test-create-code');
+      await a.repo.transaction((s) => {
+        add(s, '上传中');
+      });
+      duringUpload = async () => {
+        await a.repo.transaction((s) => {
+          add(s, '新修改');
+        });
+      };
+      await a.sync.sync();
+      expect((await a.repo.load()).entries).toHaveLength(2);
+      await a.sync.sync();
+      const b = device(request);
+      await b.sync.connect(key);
+      expect((await b.repo.load()).entries).toHaveLength(2);
+      db.close();
     });
-    await b.sync.sync(stale);
-    expect((await b.repo.load()).entries[0].note).toBe('B2');
-    expect(b.sync.status.conflicts).toHaveLength(1);
-    await b.sync.sync({ ...stale, localRevision: b.sync.status.localRevision });
-    expect((await b.repo.load()).entries[0].note).toBe('A');
-    db.close();
-  });
-  it('disconnect/reconnect retains common ancestor; switching accounts requires clearing local data', async () => {
-    const { request, db } = backend(),
-      a = device(request),
-      b = device(request),
-      key = newSyncKey();
-    await a.repo.transaction((s) => {
-      createBook(s, '日常', 'CNY');
-      add(s, '将删除');
+    it('keeps conflicts in both places, applies chosen row only, and rejects stale choices', async () => {
+      const { request, db } = backend(),
+        a = device(request),
+        b = device(request),
+        key = newSyncKey();
+      await a.repo.transaction((s) => {
+        createBook(s, '日常', 'CNY');
+        add(s, '原始');
+      });
+      await a.sync.connect(key, 'test-create-code');
+      await b.sync.connect(key);
+      await a.repo.transaction((s) => {
+        s.entries[0].note = 'A';
+      });
+      await b.repo.transaction((s) => {
+        s.entries[0].note = 'B';
+      });
+      await a.sync.sync();
+      await b.sync.sync();
+      expect(b.sync.status.conflicts).toHaveLength(1);
+      expect((await b.repo.load()).entries[0].note).toBe('B');
+      const stale = {
+        localRevision: b.sync.status.localRevision,
+        remoteRevision: b.sync.status.remoteRevision,
+        choices: { [b.sync.status.conflicts[0].key]: 'remote' as const },
+      };
+      await b.repo.transaction((s) => {
+        s.entries[0].note = 'B2';
+      });
+      await b.sync.sync(stale);
+      expect((await b.repo.load()).entries[0].note).toBe('B2');
+      expect(b.sync.status.conflicts).toHaveLength(1);
+      await b.sync.sync({ ...stale, localRevision: b.sync.status.localRevision });
+      expect((await b.repo.load()).entries[0].note).toBe('A');
+      db.close();
     });
-    await a.sync.connect(key, 'test-create-code');
-    await b.sync.connect(key);
-    await b.sync.disconnect();
-    await a.repo.transaction((s) => {
-      deleteEntry(s, s.entries[0].id);
+    it('disconnect/reconnect retains common ancestor; switching accounts requires clearing local data', async () => {
+      const { request, db } = backend(),
+        a = device(request),
+        b = device(request),
+        key = newSyncKey();
+      await a.repo.transaction((s) => {
+        createBook(s, '日常', 'CNY');
+        add(s, '将删除');
+      });
+      await a.sync.connect(key, 'test-create-code');
+      await b.sync.connect(key);
+      await b.sync.disconnect();
+      await a.repo.transaction((s) => {
+        deleteEntry(s, s.entries[0].id);
+      });
+      await a.sync.sync();
+      await b.sync.connect(key);
+      expect((await b.repo.load()).entries[0].deletedAt).toBeDefined();
+      await b.sync.disconnect();
+      await expect(b.sync.connect(newSyncKey(), 'test-create-code')).rejects.toThrow(
+        '其他同步空间',
+      );
+      db.close();
     });
-    await a.sync.sync();
-    await b.sync.connect(key);
-    expect((await b.repo.load()).entries[0].deletedAt).toBeDefined();
-    await b.sync.disconnect();
-    await expect(b.sync.connect(newSyncKey(), 'test-create-code')).rejects.toThrow('其他同步空间');
-    db.close();
-  });
-  it('clearing during an upload cannot resurrect local data or delete the cloud', async () => {
-    const { request, db } = backend();
-    let clear = false;
-    const a = device(async (url, options) => {
-      const response = await request(url, options);
-      if (clear && options?.method === 'PUT') {
-        clear = false;
-        await a.repo.clear();
-      }
-      return response;
+    it('clearing during an upload cannot resurrect local data or delete the cloud', async () => {
+      const { request, db } = backend();
+      let clear = false;
+      const a = device(async (url, options) => {
+        const response = await request(url, options);
+        if (clear && options?.method === 'PUT') {
+          clear = false;
+          await a.repo.clear();
+        }
+        return response;
+      });
+      const key = newSyncKey();
+      await a.repo.transaction((s) => {
+        createBook(s, '日常', 'CNY');
+      });
+      await a.sync.connect(key, 'test-create-code');
+      await a.repo.transaction((s) => {
+        add(s, '云端留存');
+      });
+      clear = true;
+      await a.sync.sync();
+      expect((await a.repo.load()).books).toHaveLength(0);
+      expect((await a.repo.syncRead()).meta).toBeNull();
+      const b = device(request);
+      await b.sync.connect(key);
+      expect((await b.repo.load()).entries).toHaveLength(1);
+      db.close();
     });
-    const key = newSyncKey();
-    await a.repo.transaction((s) => {
-      createBook(s, '日常', 'CNY');
+    it('pauses sync after local protection restore', async () => {
+      const { request, db } = backend(),
+        a = device(request),
+        key = newSyncKey();
+      await a.repo.transaction((s) => {
+        createBook(s, '日常', 'CNY');
+      });
+      await a.repo.protect('manual');
+      const saved = (await a.repo.snapshots())[0];
+      await a.sync.connect(key, 'test-create-code');
+      await a.repo.transaction((s) => {
+        add(s, '新账目');
+      });
+      await a.sync.sync();
+      await a.repo.protect('restore', saved.id);
+      expect((await a.repo.syncRead()).meta?.secret).toBeUndefined();
+      await a.sync.sync();
+      const b = device(request);
+      await b.sync.connect(key);
+      expect((await b.repo.load()).entries).toHaveLength(1);
+      db.close();
     });
-    await a.sync.connect(key, 'test-create-code');
-    await a.repo.transaction((s) => {
-      add(s, '云端留存');
-    });
-    clear = true;
-    await a.sync.sync();
-    expect((await a.repo.load()).books).toHaveLength(0);
-    expect((await a.repo.syncRead()).meta).toBeNull();
-    const b = device(request);
-    await b.sync.connect(key);
-    expect((await b.repo.load()).entries).toHaveLength(1);
-    db.close();
-  });
-  it('pauses sync after local protection restore', async () => {
-    const { request, db } = backend(),
-      a = device(request),
-      key = newSyncKey();
-    await a.repo.transaction((s) => {
-      createBook(s, '日常', 'CNY');
-    });
-    await a.repo.protect('manual');
-    const saved = (await a.repo.snapshots())[0];
-    await a.sync.connect(key, 'test-create-code');
-    await a.repo.transaction((s) => {
-      add(s, '新账目');
-    });
-    await a.sync.sync();
-    await a.repo.protect('restore', saved.id);
-    expect((await a.repo.syncRead()).meta?.secret).toBeUndefined();
-    await a.sync.sync();
-    const b = device(request);
-    await b.sync.connect(key);
-    expect((await b.repo.load()).entries).toHaveLength(1);
-    db.close();
-  });
-});
+  },
+);
