@@ -66,6 +66,8 @@ self.addEventListener('fetch', (event) => {
   const request = event.request,
     url = new URL(request.url);
   if (request.method !== 'GET' || !url.href.startsWith(ROOT)) return;
+  // Authentication and encrypted account responses must never enter the offline shell.
+  if (url.pathname.startsWith('/api/')) return;
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {

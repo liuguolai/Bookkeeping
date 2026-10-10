@@ -1,4 +1,5 @@
 import { PwaPanel } from './PwaPanel';
+import { SyncPanel, SyncStatusButton } from './SyncPanel';
 import { ComparisonPanel } from './ComparisonPanel';
 import { TemplatesDialog } from './TemplatesDialog';
 import { useEffect, useMemo, useState } from 'react';
@@ -11,6 +12,7 @@ import { isNative } from './storage';
 import { EntryEditor } from './EntryEditor';
 import { MonthPicker } from './MonthPicker';
 import { backupDue } from './experience';
+import { bookOverview } from './bookOverview';
 import {
   Welcome,
   BooksDialog,
@@ -39,6 +41,18 @@ export default function App() {
     state.books.find((b) => !b.deletedAt);
   const [page, setPage] = useState<Page>('records'),
     [panel, setPanel] = useState<Panel>(null);
+  const [browseSyncedBooks, setBrowseSyncedBooks] = useState(false);
+  const [requestedView, setRequestedView] = useState<{ bookId: string; month: string } | null>(
+    null,
+  );
+  const overview = useMemo(() => bookOverview(state), [state]);
+  const otherRecordCount = overview
+    .filter((row) => row.book.id !== book?.id)
+    .reduce((sum, row) => sum + row.count, 0);
+  const openSyncedBooks = () => {
+    setBrowseSyncedBooks(true);
+    setPanel('books');
+  };
   const [month, setMonth] = useState(localTime().slice(0, 7)),
     [currency, setCurrency] = useState<Currency | 'all'>('all'),
     [statsCurrency, setStatsCurrency] = useState<Currency>('CNY');
@@ -72,6 +86,19 @@ export default function App() {
       void run((s) => inheritBudgets(s, book.id, localTime(book.timezone).slice(0, 7)));
     }
   }, [book?.id]);
+  useEffect(() => {
+    if (!requestedView || requestedView.bookId !== book?.id) return;
+    setPage('records');
+    setMonth(requestedView.month);
+    setPeriod('month');
+    setCurrency('all');
+    setQuery('');
+    setCategoryFilter('');
+    setPaymentFilter('');
+    setTypeFilter('');
+    setFilterOpen(false);
+    setRequestedView(null);
+  }, [book?.id, requestedView]);
   useEffect(() => {
     setLimit(30);
   }, [month, currency, query, categoryFilter, paymentFilter, typeFilter, period, from, to]);
@@ -264,7 +291,7 @@ export default function App() {
           <div className="local-badge">
             <Icon name="shield" size={17} />
             <span>
-              安心留在本机<small>无需登录 · 不上传账目</small>
+              离线也能记账<small>本地保存 · 云同步可选</small>
             </span>
           </div>
           <span className="version">口袋账本 / 0.1</span>
@@ -585,17 +612,41 @@ export default function App() {
                       detail={
                         all.length
                           ? '试试其他币种、日期或筛选条件。'
-                          : '记下一笔小小的花费，让生活清晰一点。'
+                          : otherRecordCount > 0
+                            ? `当前账本暂无记录，其他账本共有 ${otherRecordCount} 笔记录。切换账本即可查看。`
+                            : '记下一笔小小的花费，让生活清晰一点。'
                       }
                       action={
-                        <button
-                          className="primary"
-                          disabled={readonly}
-                          onClick={() => (all.length ? clearFilters() : setEditor({}))}
-                        >
-                          {all.length ? '重置筛选' : '记下第一笔'}
-                          <Icon name={all.length ? 'refund' : 'plus'} size={16} />
-                        </button>
+                        <div className="empty-actions">
+                          <button
+                            className="primary"
+                            disabled={readonly}
+                            onClick={() => (all.length ? clearFilters() : setEditor({}))}
+                          >
+                            {all.length ? '重置筛选' : '记下第一笔'}
+                            <Icon name={all.length ? 'refund' : 'plus'} size={16} />
+                          </button>
+                          {!all.length && otherRecordCount > 0 && (
+                            <button className="secondary" onClick={openSyncedBooks}>
+                              查看有记录的账本
+                            </button>
+                          )}
+                          {all.length > 0 && (
+                            <button
+                              className="secondary"
+                              onClick={() =>
+                                setRequestedView({
+                                  bookId: book.id,
+                                  month: overview
+                                    .find((row) => row.book.id === book.id)!
+                                    .latest.slice(0, 7),
+                                })
+                              }
+                            >
+                              查看最近记录
+                            </button>
+                          )}
+                        </div>
                       }
                     />
                   )}
@@ -919,7 +970,9 @@ export default function App() {
                 </div>
                 <div>
                   <h2>生活的细节，留在你的口袋里。</h2>
-                  <p>不需要账号，不上传账目。记账、统计和本地备份都可以离线完成。</p>
+                  <p>
+                    默认仅保存在本机。可选择开启加密云同步；记账、统计和本地备份都可以离线完成。
+                  </p>
                 </div>
               </section>
               <div className="settings-grid">
@@ -1001,13 +1054,14 @@ export default function App() {
                   </button>
                 </section>
               </div>
+              <SyncPanel onOpenBooks={openSyncedBooks} />
               <PwaPanel />
               <div className="about-note">
                 <b>口袋账本 0.1</b>
                 <p>
                   {isNative
                     ? '原生本地存储 · 加密 SQLite'
-                    : '网页应用 · 账目仅存在当前浏览器，未启用原生数据库加密'}
+                    : '网页应用 · 本地浏览器存储，云同步单独加密；本机存储未加密'}
                   <br />
                   同一设备的账本不做成员权限隔离。支付方式是标签，不管理余额。
                 </p>
@@ -1016,6 +1070,7 @@ export default function App() {
           )}
           <footer className="content-footer">
             <span>小小记录，好好生活。</span>
+            <SyncStatusButton onOpen={() => setPage('settings')} />
             <span>
               <Icon name="shield" size={13} />
               本地保存
@@ -1089,7 +1144,17 @@ export default function App() {
           }}
         />
       )}
-      {panel === 'books' && <BooksDialog onClose={() => setPanel(null)} />}
+      {panel === 'books' && (
+        <BooksDialog
+          onClose={() => {
+            setPanel(null);
+            setBrowseSyncedBooks(false);
+          }}
+          onViewRecords={
+            browseSyncedBooks ? (bookId, month) => setRequestedView({ bookId, month }) : undefined
+          }
+        />
+      )}
       {panel === 'budget' && (
         <BudgetEditor
           book={book}

@@ -12,7 +12,9 @@ ios/App/build/
 .DS_Store
 
 test-results-pwa/
+test-results-sync/
 .wrangler/
+.dev.vars*
 
 # Local credentials, signing material and personal ledger exports
 .env

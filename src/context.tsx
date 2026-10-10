@@ -3,6 +3,7 @@ import { PwaPanel } from './PwaPanel';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { emptyState, type State, localTime } from './model';
 import { repository } from './storage';
+import { syncClient, syncSupported } from './sync/client';
 import { inheritBudgets } from './domain';
 import { Dialog, Icon } from './ui';
 type Confirm = {
@@ -59,6 +60,31 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
       clearTimeout(timer.current);
     };
   }, []);
+  useEffect(() => {
+    if (!ready || !syncSupported) return;
+    const stop = syncClient.start();
+    const reload = () => {
+      void repository
+        .load()
+        .then(setState)
+        .catch(() => {});
+    };
+    const unsubscribe = repository.subscribe((kind) => {
+      if (kind === 'sync') reload();
+    });
+    const channel =
+      typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('pocket-ledger-sync');
+    if (channel)
+      channel.onmessage = () => {
+        reload();
+        void syncClient.refresh().catch(() => {});
+      };
+    return () => {
+      stop();
+      unsubscribe();
+      channel?.close();
+    };
+  }, [ready]);
   const run = async (fn: (s: State) => void, message?: string) => {
     try {
       setState(await repository.transaction(fn));

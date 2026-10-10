@@ -1,0 +1,62 @@
+{
+  "version": "0.2.2",
+  "verifiedAt": "2026-10-10",
+  "build": "passed",
+  "buildId": "c927cb1898708de3b5bb",
+  "tests": {
+    "core": { "passed": 124, "failed": 0 },
+    "desktopAndMobile": { "passed": 42, "failed": 0 },
+    "pwa": { "passed": 8, "failed": 0 },
+    "localWorkerD1TwoDevice": { "passed": 7, "failed": 0 }
+  },
+  "testScope": "Core, desktop/mobile, and PWA suites passed before a final login explanatory-copy edit. Final build and all 7 Worker/D1 browser scenarios passed after that edit; business logic was unchanged. Total: 181 passing scenarios.",
+  "passwordMinimumHotfix": {
+    "minimumCharacters": 8,
+    "previousFullSuiteBuild": "a991e8f055fab953f7f4",
+    "validation": "Production build passed, account unit tests 11/11 passed including 7/8/128/129 character boundaries; real local Worker+D1 browser account flow 1/1 passed using eight-character passwords for binding, login, change and recovery. Other suites were not repeated for this scoped adjustment.",
+    "deployment": "not deployed"
+  },
+  "testRepair": "Additional cross-space browser test initially matched recovery textarea and checkbox by partial label. Fixed to exact label and actual close-button name; all 7 sync tests passed on rerun.",
+  "accountCoverage": [
+    "Existing vault binding leaves encrypted ledger and cloud revision intact",
+    "Fresh-device username/password login decrypts original key and restores records without duplicate books",
+    "Wrong and unknown logins return generic failure and preserve data",
+    "Password update invalidates old password while existing key-connected devices continue syncing",
+    "Recovery key resets password without requiring remembered username",
+    "One account per vault and one vault per username, no rename",
+    "Stale password update is rejected using revision compare-and-swap",
+    "Encrypted-key metadata tampering fails authenticated decryption",
+    "Successful bind can be read after a lost network response",
+    "Missing migration or auth limiter disables account API without blocking original vault API",
+    "Cross-origin, unauthorized, malformed and oversized requests rejected",
+    "Per-IP and per-account login throttling",
+    "Previously associated device cannot silently change space through login or recovery",
+    "320 CSS-pixel account dialog has no horizontal overflow",
+    "Account and vault API responses excluded from service-worker cache"
+  ],
+  "wranglerDryRun": "Passed; DB, AUTH_RATE_LIMIT 10/60s, SYNC_RATE_LIMIT 60/60s and ASSETS recognized. Worker 12.46 KiB. No upload.",
+  "migration": "0002_accounts.sql tested against isolated local D1 and in-memory SQLite; not applied remotely",
+  "artifact": {
+    "path": "artifacts/pocket-ledger-0.2.2-pwa.zip",
+    "bytes": 200195,
+    "sha256": "6720A43116E98CDBFFD666260DB56DCB2A4DB7358379FAE6F5A7BE0EBD20677C",
+    "files": 17,
+    "verification": "Every ZIP file SHA-256 matches final dist. Static frontend only; Worker and migrations deploy from full repository."
+  },
+  "screenshot": "docs/screenshots/cloud-account-022-mobile.png",
+  "deployment": "not deployed; not committed or pushed in this round",
+  "remainingGates": [
+    "Remote migration and production deployment",
+    "Production two-device verification",
+    "Physical iPhone Safari and home-screen PWA acceptance",
+    "Independent security review"
+  ],
+  "limitations": [
+    "Password login is not a local device lock",
+    "Changing password does not revoke existing devices or recovery keys",
+    "No email/SMS recovery; lost password plus lost key and no connected device cannot recover encrypted cloud data",
+    "Username existence is not completely concealed",
+    "Client-side password derivation and proof authentication are not PAKE",
+    "Cloudflare rate limits are per location, not a global quota"
+  ]
+}

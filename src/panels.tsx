@@ -1,8 +1,10 @@
 import { PwaPanel } from './PwaPanel';
+import { SyncPanel } from './SyncPanel';
 import { WebExport, type PreparedExport } from './WebExport';
 import { isNative } from './storage';
 import { ProtectionPanel } from './ProtectionPanel';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { bookOverview } from './bookOverview';
 import { useLedger } from './context';
 import { type Book, type Budget, type Entry, uid, localTime } from './model';
 import { CURRENCIES, currencyCodes, money, amountText, parseMoney, type Currency } from './money';
@@ -58,7 +60,7 @@ export function Welcome() {
         <div className="welcome-badges">
           <span>
             <Icon name="shield" size={16} />
-            数据留在本机
+            本地优先 · 可选云同步
           </span>
           <span>
             <Icon name="coins" size={16} />
@@ -66,59 +68,78 @@ export function Welcome() {
           </span>
         </div>
       </div>
-      <form
-        className="welcome-card"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setBusy(true);
-          await run((s) => {
-            createBook(s, name, currency);
-          });
-          setBusy(false);
-        }}
-      >
-        <div className="welcome-illustration">
-          <Icon name="book" size={66} />
-          <span>✦</span>
-        </div>
-        <h2>从第一本账开始</h2>
-        <p>{isNative ? '不用注册，也不用联网。' : '不用注册，首次加载完成后可离线记账。'}</p>
-        <Label title="账本名称">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={20}
-            required
-            aria-label="账本名称"
-          />
-        </Label>
-        <Label title="默认币种">
-          <select
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value as Currency)}
-            aria-label="默认币种"
-          >
-            {currencyCodes.map((c) => (
-              <option key={c} value={c}>
-                {CURRENCIES[c].name} · {c}
-              </option>
-            ))}
-          </select>
-        </Label>
-        <button className="primary wide" disabled={busy}>
-          {busy ? '创建中…' : '开启我的账本'}
-          <Icon name="arrow" size={18} />
-        </button>
-        <small className="privacy-note">
-          数据仅存于这台设备。请定期导出加密备份，换机时手动恢复。
-        </small>
-      </form>
+      <div className="welcome-options">
+        {!isNative && <SyncPanel onboarding />}
+        <form
+          className="welcome-card"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            await run((s) => {
+              createBook(s, name, currency);
+            });
+            setBusy(false);
+          }}
+        >
+          <div className="welcome-illustration">
+            <Icon name="book" size={66} />
+            <span>✦</span>
+          </div>
+          <h2>第一次使用？创建账本</h2>
+          <p>{isNative ? '不用注册，也不用联网。' : '不用注册，首次加载完成后可离线记账。'}</p>
+          <Label title="账本名称">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={20}
+              required
+              aria-label="账本名称"
+            />
+          </Label>
+          <Label title="默认币种">
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as Currency)}
+              aria-label="默认币种"
+            >
+              {currencyCodes.map((c) => (
+                <option key={c} value={c}>
+                  {CURRENCIES[c].name} · {c}
+                </option>
+              ))}
+            </select>
+          </Label>
+          <button className="primary wide" disabled={busy}>
+            {busy ? '创建中…' : '开启我的账本'}
+            <Icon name="arrow" size={18} />
+          </button>
+          <small className="privacy-note">
+            {isNative
+              ? '数据保存在这台设备，请定期导出加密备份。'
+              : '默认保存在本机。创建后可在设置开启云同步，也请定期导出加密备份。'}
+          </small>
+        </form>
+      </div>
       <PwaPanel compact />
     </main>
   );
 }
-export function BooksDialog({ onClose }: { onClose: () => void }) {
+export function BooksDialog({
+  onClose,
+  onViewRecords,
+}: {
+  onClose: () => void;
+  onViewRecords?: (bookId: string, month: string) => void;
+}) {
   const { state, run, confirm } = useLedger();
+  const overview = useMemo(() => bookOverview(state), [state]);
+  const duplicateNames = new Set(
+    overview
+      .filter((row, i, rows) =>
+        rows.some((other, j) => j !== i && other.book.name === row.book.name),
+      )
+      .map((row) => row.book.name),
+  );
   const [editing, setEditing] = useState<Book | null>(null),
     [newBook, setNewBook] = useState(false);
   const [name, setName] = useState(''),
@@ -318,47 +339,60 @@ export function BooksDialog({ onClose }: { onClose: () => void }) {
         </form>
       ) : (
         <>
-          <p className="dialog-copy">账本都保存在这台设备中，不会与他人共享。</p>
+          <p className="dialog-copy">
+            选择要查看的账本。开启云同步后，同一空间内的设备可访问这些账本。
+          </p>
+          {duplicateNames.size > 0 && (
+            <p className="sync-notice">
+              发现同名账本：它们来自不同的创建操作，会分别保留。请按记录数和最近记账时间选择，也可以通过右侧设置重命名。
+            </p>
+          )}
           <div className="book-list">
-            {state.books
-              .filter((b) => !b.deletedAt)
-              .map((b) => (
-                <div
-                  className={`book-row ${state.activeBookId === b.id ? 'selected' : ''}`}
-                  key={b.id}
+            {overview.map(({ book: b, count, latest }) => (
+              <div
+                className={`book-row ${state.activeBookId === b.id ? 'selected' : ''}`}
+                key={b.id}
+              >
+                <button
+                  className="book-main"
+                  onClick={async () => {
+                    if (
+                      await run((s) => {
+                        s.activeBookId = b.id;
+                      })
+                    ) {
+                      if (latest) onViewRecords?.(b.id, latest.slice(0, 7));
+                      onClose();
+                    }
+                  }}
                 >
-                  <button
-                    className="book-main"
-                    onClick={async () => {
-                      if (
-                        await run((s) => {
-                          s.activeBookId = b.id;
-                        })
-                      )
-                        onClose();
-                    }}
-                  >
-                    <span className="category-icon">
-                      <Icon name={b.archived ? 'archive' : 'book'} />
-                    </span>
-                    <span>
-                      <b>{b.name}</b>
-                      <small>
-                        {b.currency} 默认 ·{' '}
-                        {b.archived ? '已归档' : `${bookEntries(state, b.id).length} 笔记录`}
-                      </small>
-                    </span>
-                    {state.activeBookId === b.id && <Icon name="check" size={18} />}
-                  </button>
-                  <button
-                    className="icon-button"
-                    aria-label={`设置${b.name}`}
-                    onClick={() => start(b)}
-                  >
-                    <Icon name="edit" size={18} />
-                  </button>
-                </div>
-              ))}
+                  <span className="category-icon">
+                    <Icon name={b.archived ? 'archive' : 'book'} />
+                  </span>
+                  <span>
+                    <b>
+                      {b.name}
+                      {state.activeBookId === b.id && <span className="book-current">当前</span>}
+                    </b>
+                    <small>
+                      {b.currency} 默认 · {count} 笔记录{b.archived ? ' · 已归档' : ''}
+                    </small>
+                    <small>{latest ? `最近记账 ${latest.replace('T', ' ')}` : '暂无记录'}</small>
+                    {duplicateNames.has(b.name) && (
+                      <small>创建于 {new Date(b.createdAt).toLocaleString('zh-CN')}</small>
+                    )}
+                  </span>
+                  {state.activeBookId === b.id && <Icon name="check" size={18} />}
+                </button>
+                <button
+                  className="icon-button"
+                  aria-label={`设置${b.name}`}
+                  onClick={() => start(b)}
+                >
+                  <Icon name="edit" size={18} />
+                </button>
+              </div>
+            ))}
           </div>
           <button className="secondary wide" onClick={() => start()}>
             <Icon name="plus" size={18} />
@@ -1057,7 +1091,7 @@ export function BackupDialog({ book, onClose }: { book: Book; onClose: () => voi
       {tab === 'restore' && (
         <div>
           <p className="dialog-copy">
-            恢复为新的本地账本，现有记录不会被覆盖。两台设备不会自动同步。
+            恢复为新的本地账本，现有记录不会被覆盖。若已开启云同步，新账本也会同步到其他设备。
           </p>
           <Label title="选择备份文件">
             <input
@@ -1214,6 +1248,7 @@ export function ClearDialog({ onClose }: { onClose: () => void }) {
       <p className="dialog-copy">
         所有账本、记录、模板、草稿、回收站及本机保护副本都将被删除，无法撤销。请先导出备份。另存的
         CSV 和备份文件需要自行管理。
+        此操作会断开本机同步，不删除云端数据。请先保存同步密钥；尚未上传的修改仍会丢失。
       </p>
       <Label title="输入“清空全部数据”确认">
         <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" />

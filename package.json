@@ -1,6 +1,6 @@
 {
   "name": "pocket-ledger",
-  "version": "0.1.9",
+  "version": "0.2.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,12 @@
     "android": "cap open android",
     "ios": "cap open ios",
     "preview:pwa": "vite preview --host 127.0.0.1 --port 5174 --strictPort",
-    "test:pwa": "playwright test --config playwright.pwa.config.ts"
+    "test:pwa": "playwright test --config playwright.pwa.config.ts",
+    "test:sync": "playwright test --config playwright.sync.config.ts",
+    "cloud:dev": "wrangler dev --config wrangler.local.jsonc --port 8787",
+    "cloud:migrate:local": "wrangler d1 migrations apply DB --local --config wrangler.local.jsonc",
+    "cloud:migrate": "wrangler d1 migrations apply DB --remote",
+    "cloud:deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.1.1",
@@ -44,6 +49,7 @@
     "prettier": "^3.9.9",
     "typescript": "^5.9.3",
     "vite": "^8.3.1",
-    "vitest": "^4.0.0"
+    "vitest": "^4.0.0",
+    "wrangler": "4.149.0"
   }
 }

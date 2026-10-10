@@ -33,7 +33,7 @@ export function ProtectionPanel({ recovery = false }: { recovery?: boolean }) {
     <section className="protection-panel" aria-label="本机保护副本">
       <h3>本机保护副本</h3>
       <p className="dialog-copy">
-        升级前自动留存，最多保留最近 3
+        升级及云同步合并前自动留存，最多保留最近 3
         份，包含所有账本、草稿和回收站。卸载应用或丢失手机后无法使用，请另存加密备份到手机外。
       </p>
       {!recovery && (
@@ -90,6 +90,7 @@ export function ProtectionPanel({ recovery = false }: { recovery?: boolean }) {
               <div className="restore-confirm">
                 <p>
                   恢复将把全部本地账本还原到此时，包括草稿、回收站和模板。当前状态会先自动留存一份，恢复后可再次选择它撤回。
+                  恢复后会断开本机云同步，避免自动覆盖云端；使用原同步密钥重新连接时再确认合并。
                 </p>
                 <div className="actions">
                   <button className="secondary" disabled={busy} onClick={() => setSelected(null)}>

@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { type State, emptyState, validateState } from './model';
 import { purgeExpired } from './domain';
+import type { SyncMeta, SyncSnapshot } from './sync/types';
 import {
   APP_VERSION,
   planProtection,
@@ -15,12 +16,15 @@ export interface Persistence {
   destroy(): Promise<void>;
   protect?(action: ProtectionAction): Promise<State | undefined>;
   snapshots?(): Promise<ProtectionSnapshot[]>;
+  syncRead?(): Promise<SyncSnapshot>;
+  syncWrite?(expected: SyncSnapshot, meta: SyncMeta | null, state?: State): Promise<void>;
 }
 export class BrowserPersistence implements Persistence {
+  constructor(private databaseName = 'pocket-ledger-preview') {}
   private db?: Promise<IDBDatabase>;
   private open() {
     return (this.db ??= new Promise<IDBDatabase>((resolve, reject) => {
-      const req = indexedDB.open('pocket-ledger-preview', 1);
+      const req = indexedDB.open(this.databaseName, 1);
       req.onupgradeneeded = () => {
         req.result.createObjectStore('vault');
       };
@@ -41,6 +45,84 @@ export class BrowserPersistence implements Persistence {
         }
       };
       req.onerror = () => reject(req.error);
+    });
+  }
+  async syncRead(): Promise<SyncSnapshot> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('vault', 'readonly'),
+        store = tx.objectStore('vault');
+      const state = store.get('state'),
+        meta = store.get('sync');
+      tx.oncomplete = () => {
+        try {
+          const value = meta.result as SyncMeta | undefined;
+          if (value) {
+            if (
+              typeof value.generation !== 'string' ||
+              typeof value.accountId !== 'string' ||
+              !Number.isFinite(value.syncedAt) ||
+              !Number.isSafeInteger(value.cloudRevision) ||
+              value.cloudRevision < 0 ||
+              (value.secret !== undefined && typeof value.secret !== 'string')
+            )
+              throw new Error('同步配置损坏，请保留本地数据并导出备份');
+            value.base = validateState(value.base);
+          }
+          resolve({
+            state: state.result ? validateState(state.result) : null,
+            meta: value ?? null,
+          });
+        } catch (error) {
+          reject(error);
+        }
+      };
+      tx.onerror = tx.onabort = () => reject(tx.error);
+    });
+  }
+  async syncWrite(expected: SyncSnapshot, meta: SyncMeta | null, state?: State) {
+    const db = await this.open();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction('vault', 'readwrite'),
+        store = tx.objectStore('vault');
+      const current = store.get('state'),
+        session = store.get('sync'),
+        history = store.get('protection');
+      let failure: unknown;
+      history.onsuccess = () => {
+        try {
+          if (
+            (current.result?.revision ?? null) !== (expected.state?.revision ?? null) ||
+            (session.result?.generation ?? null) !== (expected.meta?.generation ?? null)
+          )
+            throw new Error('本地数据或同步账号已变化，请重试同步');
+          if (state) {
+            const valid = validateState({
+              ...state,
+              revision: (expected.state?.revision ?? 0) + 1,
+            });
+            // Save the pre-merge state and merged state in the same transaction.
+            if (current.result) {
+              const plan = planProtection(
+                JSON.stringify(current.result),
+                history.result,
+                { kind: 'manual', version: APP_VERSION },
+                current.result.revision,
+              );
+              store.put(plan.archive, 'protection');
+            }
+            store.put(valid, 'state');
+          }
+          if (meta) store.put(meta, 'sync');
+          else store.delete('sync');
+        } catch (error) {
+          failure = error;
+          tx.abort();
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onabort = tx.onerror = () =>
+        reject(failure ?? new Error('同步保存失败，本地数据保持原样'));
     });
   }
   async write(state: State, previousRevision: number | null) {
@@ -110,6 +192,15 @@ export class BrowserPersistence implements Persistence {
           if (change.state) {
             result = change.state;
             store.put(result, 'state');
+            // A local recovery is not consent to overwrite the cloud with an old snapshot.
+            const sync = store.get('sync');
+            sync.onsuccess = () => {
+              if (sync.result)
+                store.put(
+                  { ...sync.result, secret: undefined, generation: crypto.randomUUID() },
+                  'sync',
+                );
+            };
           }
         } catch (error) {
           failure = error;
@@ -216,6 +307,16 @@ class NativePersistence implements Persistence {
   }
 }
 export class Repository {
+  private listeners = new Set<(kind: 'local' | 'sync' | 'clear') => void>();
+  subscribe(listener: (kind: 'local' | 'sync' | 'clear') => void) {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+  private changed(kind: 'local' | 'sync' | 'clear') {
+    this.listeners.forEach((fn) => fn(kind));
+  }
   private queue: Promise<unknown> = Promise.resolve();
   private prepared?: Promise<unknown>;
   constructor(
@@ -247,6 +348,7 @@ export class Repository {
       draft.revision = (stored?.revision ?? 0) + 1;
       const valid = validateState(draft);
       await this.persistence.write(valid, stored?.revision ?? null);
+      this.changed('local');
       return valid;
     });
     this.queue = task.catch(() => undefined);
@@ -256,6 +358,7 @@ export class Repository {
     const task = this.queue.then(async () => {
       await this.persistence.destroy();
       this.prepared = undefined;
+      this.changed('clear');
       return emptyState();
     });
     this.queue = task.catch(() => undefined);
@@ -263,6 +366,21 @@ export class Repository {
   }
   async snapshots() {
     return this.persistence.snapshots?.() ?? [];
+  }
+  async syncRead() {
+    await this.queue;
+    await this.prepare();
+    if (!this.persistence.syncRead) throw new Error('云同步目前支持网页版及安装到桌面的 PWA');
+    return this.persistence.syncRead();
+  }
+  syncWrite(expected: SyncSnapshot, meta: SyncMeta | null, state?: State) {
+    const task = this.queue.then(async () => {
+      if (!this.persistence.syncWrite) throw new Error('此存储不支持云同步');
+      await this.persistence.syncWrite(expected, meta, state);
+      this.changed('sync');
+    });
+    this.queue = task.catch(() => undefined);
+    return task;
   }
   protect(kind: 'manual' | 'restore', id = '') {
     const task = this.queue.then(async () => {
@@ -274,6 +392,7 @@ export class Repository {
           : { kind, version: this.appVersion },
       );
       if (kind === 'restore') this.prepared = Promise.resolve();
+      if (kind === 'restore') this.changed('sync');
       return state;
     });
     this.queue = task.catch(() => undefined);

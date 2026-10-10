@@ -3,60 +3,53 @@ test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-10-09T04:00:00Z'));
   await page.goto('/');
   await page.getByRole('button', { name: '开启我的账本' }).click();
+  await expect(
+    page.getByRole('button', { name: '记一笔', exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve) => {
-      const r = indexedDB.open('pocket-ledger-preview', 1);
-      r.onsuccess = () => resolve(r.result);
+    // Use the app's write queue so initial budget inheritance cannot overwrite fixtures.
+    const modulePath = '/src/storage.ts';
+    const { repository } = await import(modulePath);
+    await repository.transaction((s: any) => {
+      const bookId = s.books[0].id;
+      const food = s.categories.find((c: any) => c.name === '餐饮').id,
+        transport = s.categories.find((c: any) => c.name === '交通').id,
+        income = s.categories.find((c: any) => c.type === 'income').id;
+      const entry = (
+        id: string,
+        type: string,
+        amount: number,
+        date: string,
+        categoryId = food,
+        currency = 'CNY',
+        originalId?: string,
+      ) => ({
+        id,
+        bookId,
+        type,
+        amount,
+        categoryId,
+        currency,
+        originalId,
+        note: '',
+        occurredAt: date + 'T12:00',
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const original = crypto.randomUUID();
+      s.entries = [
+        entry(original, 'expense', 10000, '2026-09-09'),
+        entry(crypto.randomUUID(), 'expense', 2000, '2026-09-20'),
+        entry(crypto.randomUUID(), 'expense', 3000, '2026-09-04', transport),
+        entry(crypto.randomUUID(), 'expense', 6000, '2026-10-09'),
+        entry(crypto.randomUUID(), 'refund', 2000, '2026-10-09', food, 'CNY', original),
+        entry(crypto.randomUUID(), 'income', 20000, '2026-10-09', income),
+        entry(crypto.randomUUID(), 'expense', 7777, '2026-10-09', food, 'HKD'),
+        entry(crypto.randomUUID(), 'expense', 900, '2026-10-09', food, 'JPY'),
+      ];
+      s.budgets = [{ bookId, currency: 'CNY', month: '2026-10', amount: 10000, categories: {} }];
     });
-    await new Promise<void>((resolve, reject) => {
-      const t = db.transaction('vault', 'readwrite'),
-        store = t.objectStore('vault'),
-        req = store.get('state');
-      req.onsuccess = () => {
-        const s = req.result,
-          bookId = s.books[0].id;
-        const food = s.categories.find((c: any) => c.name === '餐饮').id,
-          transport = s.categories.find((c: any) => c.name === '交通').id,
-          income = s.categories.find((c: any) => c.type === 'income').id;
-        const entry = (
-          id: string,
-          type: string,
-          amount: number,
-          date: string,
-          categoryId = food,
-          currency = 'CNY',
-          originalId?: string,
-        ) => ({
-          id,
-          bookId,
-          type,
-          amount,
-          categoryId,
-          currency,
-          originalId,
-          note: '',
-          occurredAt: date + 'T12:00',
-          createdAt: 1,
-          updatedAt: 1,
-        });
-        const original = crypto.randomUUID();
-        s.entries = [
-          entry(original, 'expense', 10000, '2026-09-09'),
-          entry(crypto.randomUUID(), 'expense', 2000, '2026-09-20'),
-          entry(crypto.randomUUID(), 'expense', 3000, '2026-09-04', transport),
-          entry(crypto.randomUUID(), 'expense', 6000, '2026-10-09'),
-          entry(crypto.randomUUID(), 'refund', 2000, '2026-10-09', food, 'CNY', original),
-          entry(crypto.randomUUID(), 'income', 20000, '2026-10-09', income),
-          entry(crypto.randomUUID(), 'expense', 7777, '2026-10-09', food, 'HKD'),
-          entry(crypto.randomUUID(), 'expense', 900, '2026-10-09', food, 'JPY'),
-        ];
-        s.budgets = [{ bookId, currency: 'CNY', month: '2026-10', amount: 10000, categories: {} }];
-        store.put(s, 'state');
-      };
-      t.oncomplete = () => resolve();
-      t.onabort = () => reject(t.error);
-    });
-    db.close();
+    await repository.idle();
   });
   await page.reload();
   await page.getByRole('button', { name: '统计', exact: true }).filter({ visible: true }).click();
@@ -115,4 +108,3 @@ test('comparison remains readable at narrow widths and enlarged text', async ({
   await panel.screenshot({ path: testInfo.outputPath('comparison-narrow.png') });
   await expect(panel.getByRole('button', { name: '查看预算' })).toBeVisible();
 });
-

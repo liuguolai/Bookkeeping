@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "verifiedAt": "2026-10-10",
+  "build": "passed",
+  "tests": {
+    "core": { "passed": 112, "failed": 0 },
+    "desktopAndMobile": { "passed": 42, "failed": 0 },
+    "pwa": { "passed": 8, "failed": 0 },
+    "localWorkerD1TwoDevice": { "passed": 3, "failed": 0 }
+  },
+  "cleanDependencyInstall": "passed in isolated directory, 209 packages",
+  "dependencyAudit": { "vulnerabilities": 0 },
+  "wranglerDryRun": "passed; no remote upload",
+  "pwaBuild": "3f2d3ae3af98b752d621",
+  "staticArchive": {
+    "path": "artifacts/pocket-ledger-0.2.0-pwa.zip",
+    "bytes": 196185,
+    "sha256": "B7707DF6A2512D344587AA4ECF50B948CD9320FFEA7315E37BEC04E88E92A700",
+    "containsCloudBackend": false
+  },
+  "cloudSnapshotPlaintextMaxBytes": 1340000,
+  "publicDeployment": "not deployed: Cloudflare CLI not authenticated, production D1 binding and runtime creation secret pending",
+  "gitPush": "not performed",
+  "nativeBuild": "not performed; cloud sync is PWA-only",
+  "deviceAcceptance": "Chromium desktop and mobile viewport verified; iPhone Safari/installed PWA and production Cloudflare acceptance pending"
+}

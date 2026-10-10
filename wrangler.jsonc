@@ -1,7 +1,30 @@
 {
   "name": "pocket-ledger",
   "compatibility_date": "2026-10-06",
+  "main": "worker/index.ts",
+  "ratelimits": [
+    {
+      "name": "AUTH_RATE_LIMIT",
+      "namespace_id": "2026101002",
+      "simple": { "limit": 10, "period": 60 },
+    },
+    {
+      "name": "SYNC_RATE_LIMIT",
+      "namespace_id": "2026101001",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
   "assets": {
-    "directory": "./dist"
-  }
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pocket-ledger-sync",
+      "database_id": "0678ac3e-1c21-44be-b045-9ce0ad523ef6",
+      "migrations_dir": "migrations",
+    },
+  ],
 }

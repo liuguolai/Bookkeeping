@@ -1,0 +1,57 @@
+{
+  "version": "0.2.1",
+  "verifiedAt": "2026-10-10",
+  "build": "passed",
+  "tests": {
+    "core": {
+      "passed": 113,
+      "failed": 0
+    },
+    "desktopAndMobile": {
+      "passed": 42,
+      "failed": 0
+    },
+    "pwa": {
+      "passed": 8,
+      "failed": 0
+    },
+    "localWorkerD1TwoDevice": {
+      "passed": 5,
+      "failed": 0
+    }
+  },
+  "testRepair": "Initial desktop/mobile run: 41 passed, one mobile comparison fixture raced with app initialization. Fixture now uses the repository transaction queue; full rerun: 42 passed.",
+  "regressions": [
+    "Fresh device joins existing cloud books without creating a default duplicate",
+    "Same-name empty and populated books remain separate and intact",
+    "Successful sync summary shows acknowledged book and entry counts",
+    "Empty-book guidance opens populated book and latest entry month",
+    "Existing local active book is preserved; fresh device prefers populated book",
+    "320 CSS-pixel picker has no horizontal overflow"
+  ],
+  "wranglerDryRun": "passed with production DB binding; no remote upload",
+  "pwaBuild": "9b38c3a7e751b9d7187f",
+  "staticArchive": {
+    "path": "artifacts/pocket-ledger-0.2.1-pwa.zip",
+    "bytes": 197549,
+    "sha256": "A04CD12C6B1F413F8745FFAB06759458500DA7E1A7D4CE79BCDFB36997852993",
+    "containsCloudBackend": false
+  },
+  "publicDeployment": "0.2.1 not deployed; existing production deployment remains unchanged",
+  "gitPush": "not performed",
+  "databaseMigration": "none required; existing schema, vaults, creation code and sync keys remain compatible",
+  "authentication": "existing random sync key retained; account/password login not implemented in this release",
+  "deviceAcceptance": "Chromium desktop and mobile viewport verified; physical iPhone Safari/installed PWA acceptance pending",
+  "layoutHotfix": {
+    "change": "Unified sync panel padding: desktop 22px, mobile 18px; removed nested heading padding",
+    "build": "passed",
+    "browserWidths": [
+      1440,
+      390
+    ],
+    "alignment": "heading, status, buttons and help share the same left edge; no horizontal overflow",
+    "priorAutomatedTestBuild": "ad11de33d15ca78663bc",
+    "testsAfterCssOnlyFix": "production build and browser layout inspection; full suite not repeated",
+    "deployment": "not deployed"
+  }
+}
