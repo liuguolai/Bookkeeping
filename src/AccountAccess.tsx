@@ -111,6 +111,7 @@ export function AccountAccess({
           }
           onClose={close}
           compact
+          autoFocus={false}
         >
           <form
             className="account-form"

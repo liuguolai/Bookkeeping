@@ -1,5 +1,6 @@
 import { t, useLocale } from './i18n';
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -172,12 +173,14 @@ export function Dialog({
   onClose,
   compact = false,
   className = '',
+  autoFocus = true,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   compact?: boolean;
   className?: string;
+  autoFocus?: boolean;
 }) {
   useLocale();
   const ref = useRef<HTMLDivElement>(null);
@@ -205,9 +208,10 @@ export function Dialog({
     const timer = setTimeout(() => {
       // Preserve React autoFocus and any field the user has already focused.
       if (root.contains(document.activeElement)) return;
-      const target =
-        root.querySelector<HTMLElement>('[autofocus], input:not([type="file"])') ??
-        root.querySelector<HTMLElement>('button, select');
+      const target = autoFocus
+        ? (root.querySelector<HTMLElement>('[autofocus], input:not([type="file"])') ??
+          root.querySelector<HTMLElement>('button, select'))
+        : root;
       target?.focus({ preventScroll: true });
     }, 50);
     const key = (e: KeyboardEvent) => {
@@ -252,8 +256,9 @@ export function Dialog({
         previous?.focus();
       }
     };
-  }, []);
-  return (
+  }, [autoFocus]);
+  // Keep fixed dialogs out of cards with overflow and page-specific form styles.
+  return createPortal(
     <div
       className="overlay"
       onMouseDown={(e) => {
@@ -266,6 +271,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
       >
         <div className="dialog-head">
           <h2>{title}</h2>
@@ -275,7 +281,8 @@ export function Dialog({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 export function Empty({

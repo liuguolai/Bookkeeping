@@ -366,8 +366,10 @@ export function SyncPanel({
           }
           onClose={close}
           compact
+          autoFocus={false}
         >
           <form
+            className="sync-form"
             onSubmit={async (event) => {
               event.preventDefault();
               setError('');
