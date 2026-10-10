@@ -44,6 +44,78 @@ async function join(page: Page, key: string) {
   ).toBeVisible();
 }
 
+test('homepage registration retries without duplicate spaces and signs in on another device', async ({
+  page,
+  browser,
+}) => {
+  const username = `signup_${Date.now()}`;
+  const password = 'Registration123!';
+  let creates = 0;
+  let bindings = 0;
+  page.on('request', (request) => {
+    if (request.method() !== 'POST') return;
+    if (request.url().endsWith('/api/sync/v1/vault')) creates++;
+    if (request.url().endsWith('/api/sync/v1/account')) bindings++;
+  });
+  await page.goto('/');
+  await nav(page, '账号登录');
+  await nav(page, '没有账号？立即注册');
+  const key = await page.getByLabel('恢复密钥', { exact: true }).inputValue();
+  expect(key).toMatch(/^pl1_/);
+  await page.getByLabel('创建码', { exact: true }).fill('wrong-code');
+  await page.getByLabel('账号名', { exact: true }).fill(username);
+  await page.getByLabel('新密码', { exact: true }).fill(password);
+  await page.getByLabel('确认新密码', { exact: true }).fill('Mismatch123!');
+  await expect(page.getByRole('button', { name: '注册并开启同步', exact: true })).toBeDisabled();
+  await page.getByText('我已保存恢复密钥并了解上述说明', { exact: true }).click();
+  await nav(page, '注册并开启同步');
+  await expect(page.getByRole('alert')).toContainText('两次输入的密码不一致');
+  expect(creates).toBe(0);
+  await page.getByLabel('确认新密码', { exact: true }).fill(password);
+  await nav(page, '注册并开启同步');
+  await expect(page.getByRole('alert')).toContainText('创建码不正确');
+  await expect(page.getByLabel('恢复密钥', { exact: true })).toHaveValue(key);
+  await page.getByLabel('创建码', { exact: true }).fill('local-development-only');
+  // Commit the binding, but drop its response to simulate a connection loss.
+  await page.route('**/api/sync/v1/account', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    const response = await route.fetch();
+    expect(response.ok()).toBe(true);
+    await route.abort('failed');
+  });
+  await nav(page, '注册并开启同步');
+  await expect(page.getByRole('alert')).toContainText('连接中断或超时');
+  await expect(page.getByLabel('恢复密钥', { exact: true })).toHaveValue(key);
+  expect(creates).toBe(2);
+  expect(bindings).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page
+    .getByRole('dialog')
+    .screenshot({ path: test.info().outputPath('registration-mobile.png') });
+  await page.unroute('**/api/sync/v1/account');
+  await nav(page, '注册并开启同步');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(creates).toBe(2);
+  expect(bindings).toBe(1);
+  await expect(page.getByRole('button', { name: '注册账号', exact: true })).toHaveCount(0);
+  await nav(page, '开启我的账本');
+  await add(page, '首页注册后新增记录');
+  await sync(page);
+  const second = await browser.newContext({ locale: 'zh-CN', baseURL: 'http://127.0.0.1:4176' });
+  try {
+    const other = await second.newPage();
+    await other.goto('/');
+    await nav(other, '账号登录');
+    await other.getByLabel('账号名', { exact: true }).fill(username);
+    await other.getByLabel('密码', { exact: true }).fill(password);
+    await nav(other, '登录并同步');
+    await expect(other.getByRole('dialog')).toHaveCount(0);
+    await expect(other.locator('.entry-row')).toContainText('首页注册后新增记录');
+  } finally {
+    await second.close();
+  }
+});
+
 test('password account: bind existing space, login on fresh device, change and recover without duplicates', async ({
   page,
   browser,

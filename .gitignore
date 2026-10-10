@@ -40,4 +40,6 @@ artifacts/*.apk.sha256
 !artifacts/pocket-ledger-0.2.3-debug.apk.sha256
 !artifacts/pocket-ledger-0.2.4-debug.apk
 !artifacts/pocket-ledger-0.2.4-debug.apk.sha256
+!artifacts/pocket-ledger-0.2.5-debug.apk
+!artifacts/pocket-ledger-0.2.5-debug.apk.sha256
 artifacts/*.apk.idsig

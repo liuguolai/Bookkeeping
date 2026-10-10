@@ -199,7 +199,11 @@ export function SyncPanel({
         )}
       </p>
       <div className="sync-actions">
-        <AccountAccess connected={status.connected} disabled={status.busy} />
+        <AccountAccess
+          connected={status.connected}
+          disabled={status.busy}
+          canRegister={!status.accountId}
+        />
         {onOpenBooks && status.accountId && (
           <button className="secondary" onClick={onOpenBooks}>
             {t('查看全部账本')}

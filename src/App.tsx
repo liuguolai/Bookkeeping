@@ -299,7 +299,7 @@ export default function App() {
               <small>{t('本地保存 · 云同步可选')}</small>
             </span>
           </div>
-          <span className="version">{t('口袋账本 / 0.1')}</span>
+          <span className="version">{t('口袋账本 / {0}', [APP_VERSION])}</span>
         </div>
       </aside>
       <main className="main">

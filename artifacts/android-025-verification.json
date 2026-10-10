@@ -1,0 +1,31 @@
+{
+  "version": "0.2.5",
+  "device": "Android 14 project emulator",
+  "upgradePreservedBooks": 2,
+  "upgradePreservedEntries": 20,
+  "upgradePreservedCategoriesPaymentsTemplatesDrafts": true,
+  "upgradeSnapshot": true,
+  "registrationLanguages": [
+    "zh-CN",
+    "zh-TW",
+    "en"
+  ],
+  "offlineColdStartPreservesData": true,
+  "encryptedDatabaseHeader": true,
+  "productionWrites": false,
+  "interaction": "Installed APK WebView DOM events; not physical phone touch or keyboard acceptance",
+  "versionCode": 13,
+  "apkBytes": 13568743,
+  "apkSha256": "051515DA2959F77120B2D9DF88EB9EBB87429970145C03CBDE7EE1E43D2F9BF5",
+  "signerCertificateSha256": "b337ddc2d76cc536eea551bbb11cee311497fdf81a9b079cbc99d1b2646e6748",
+  "debugCertificateMatches024": true,
+  "matchedWebAssets": 17,
+  "apkWebAssetsMatch": true,
+  "coreTestsPassed": 153,
+  "syncBrowserCasesPassed": 8,
+  "syncBrowserTestsTiming": "Passed during registration implementation before packaging version bump",
+  "screenshots": [
+    "docs/screenshots/android-025-registration.png"
+  ],
+  "acceptanceRemaining": "Physical Android phone touch, keyboard and actual network acceptance; debug signature, no store release"
+}

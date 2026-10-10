@@ -3,14 +3,28 @@ import { messageText } from './i18n';
 import { useRef, useState } from 'react';
 import { Dialog, Label } from './ui';
 import { useLedger } from './context';
-import { accountClient, type AccountInfo, validatePassword } from './sync/account';
-import { credentials } from './sync/crypto';
+import {
+  accountClient,
+  type AccountInfo,
+  normalizeUsername,
+  validatePassword,
+} from './sync/account';
+import { credentials, newSyncKey } from './sync/crypto';
 import { syncClient } from './sync/client';
 
-export function AccountAccess({ connected, disabled }: { connected: boolean; disabled: boolean }) {
+export function AccountAccess({
+  connected,
+  disabled,
+  canRegister = false,
+}: {
+  connected: boolean;
+  disabled: boolean;
+  canRegister?: boolean;
+}) {
   useLocale();
   const { notify } = useLedger();
-  const [mode, setMode] = useState<'login' | 'manage' | 'recover' | null>(null);
+  const [mode, setMode] = useState<'login' | 'register' | 'manage' | 'recover' | null>(null);
+  const [setup, setSetup] = useState('');
   const [username, setUsername] = useState(''),
     [password, setPassword] = useState(''),
     [repeat, setRepeat] = useState(''),
@@ -25,6 +39,7 @@ export function AccountAccess({ connected, disabled }: { connected: boolean; dis
     setPassword('');
     setRepeat('');
     setRecovery('');
+    setSetup('');
     setSaved(false);
     setError('');
   };
@@ -36,13 +51,14 @@ export function AccountAccess({ connected, disabled }: { connected: boolean; dis
       setAccount(null);
     }
   };
-  const open = async (next: 'login' | 'manage' | 'recover') => {
+  const open = async (next: 'login' | 'register' | 'manage' | 'recover') => {
     if (lock.current) return;
     clearFields();
     setUsername('');
     setAccount(null);
     setLoaded(false);
     setMode(next);
+    if (next === 'register') setRecovery(newSyncKey());
     if (next !== 'manage') return;
     lock.current = true;
     setBusy(true);
@@ -66,6 +82,15 @@ export function AccountAccess({ connected, disabled }: { connected: boolean; dis
   };
   return (
     <>
+      {canRegister && (
+        <button
+          className="primary"
+          disabled={disabled || busy}
+          onClick={() => void open('register')}
+        >
+          {t('注册账号')}
+        </button>
+      )}
       <button
         className={connected ? 'secondary' : 'primary'}
         disabled={disabled || busy}
@@ -78,9 +103,11 @@ export function AccountAccess({ connected, disabled }: { connected: boolean; dis
           title={
             mode === 'login'
               ? t('账号登录')
-              : mode === 'recover'
-                ? t('恢复账号密码')
-                : t('账号与密码')
+              : mode === 'register'
+                ? t('注册账号')
+                : mode === 'recover'
+                  ? t('恢复账号密码')
+                  : t('账号与密码')
           }
           onClose={close}
           compact
@@ -90,6 +117,7 @@ export function AccountAccess({ connected, disabled }: { connected: boolean; dis
             onSubmit={async (event) => {
               event.preventDefault();
               if (lock.current) return;
+              if (mode !== 'login' && !saved) return;
               lock.current = true;
               setBusy(true);
               setError('');
@@ -98,7 +126,19 @@ export function AccountAccess({ connected, disabled }: { connected: boolean; dis
                 validatePassword(password);
                 if (mode !== 'login' && password !== repeat)
                   throw new Error(t('两次输入的密码不一致'));
-                if (mode === 'login') {
+                if (mode === 'register') {
+                  normalizeUsername(username);
+                  await checkSpace(recovery);
+                  // Reuse this key on retries, including a lost creation/binding response.
+                  if (!syncClient.snapshot().connected) await syncClient.connect(recovery, setup);
+                  const existing = await accountClient.current(recovery);
+                  if (!existing) await accountClient.bind(recovery, username, password);
+                  notify(
+                    t('账号 {0} 已注册，可在其他设备登录。请保存恢复密钥', [
+                      existing?.username ?? normalizeUsername(username),
+                    ]),
+                  );
+                } else if (mode === 'login') {
                   const secret = await accountClient.login(username, password);
                   await checkSpace(secret);
                   await syncClient.connect(secret);
@@ -134,6 +174,63 @@ export function AccountAccess({ connected, disabled }: { connected: boolean; dis
               }
             }}
           >
+            {mode === 'register' && (
+              <>
+                <p className="dialog-copy">
+                  {t(
+                    '注册后开启加密云同步，可用账号密码在其他设备继续记账。本机已有账本也会同步。',
+                  )}
+                </p>
+                {connected ? (
+                  <p className="sync-notice">
+                    {t(
+                      '同步空间已创建。若注册未完成，请继续提交，或稍后在“账号与密码”中完成绑定。',
+                    )}
+                  </p>
+                ) : (
+                  <Label title={t('管理员提供的创建码')}>
+                    <input
+                      aria-label={t('创建码')}
+                      type="password"
+                      autoComplete="off"
+                      value={setup}
+                      onChange={(e) => setSetup(e.target.value)}
+                      maxLength={200}
+                      required
+                      disabled={busy}
+                    />
+                    <small>
+                      {t('创建码由网站管理员配置，只在创建时使用。连接已有空间不需要创建码。')}
+                    </small>
+                  </Label>
+                )}
+                <Label title={t('恢复密钥')}>
+                  <textarea
+                    aria-label={t('恢复密钥')}
+                    className="sync-key"
+                    value={recovery}
+                    readOnly
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </Label>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={busy}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(recovery);
+                      notify(t('密钥已复制，请保存到安全位置'));
+                    } catch {
+                      setError(t('无法自动复制，请手动选择并复制密钥'));
+                    }
+                  }}
+                >
+                  {t('复制恢复密钥')}
+                </button>
+              </>
+            )}
             {mode === 'login' && (
               <p className="dialog-copy">
                 {t(
@@ -251,21 +348,35 @@ export function AccountAccess({ connected, disabled }: { connected: boolean; dis
                 ? t('正在处理…')
                 : mode === 'login'
                   ? t('登录并同步')
-                  : mode === 'recover'
-                    ? t('重设密码并连接')
-                    : account
-                      ? t('更新密码')
-                      : t('绑定账号')}
+                  : mode === 'register'
+                    ? t('注册并开启同步')
+                    : mode === 'recover'
+                      ? t('重设密码并连接')
+                      : account
+                        ? t('更新密码')
+                        : t('绑定账号')}
             </button>
             {mode === 'login' && (
-              <button
-                type="button"
-                className="text-button"
-                disabled={busy}
-                onClick={() => void open('recover')}
-              >
-                {t('忘记账号或密码？用恢复密钥找回')}
-              </button>
+              <>
+                {canRegister && (
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={busy}
+                    onClick={() => void open('register')}
+                  >
+                    {t('没有账号？立即注册')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="text-button"
+                  disabled={busy}
+                  onClick={() => void open('recover')}
+                >
+                  {t('忘记账号或密码？用恢复密钥找回')}
+                </button>
+              </>
             )}
           </form>
         </Dialog>
