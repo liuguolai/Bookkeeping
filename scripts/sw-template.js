@@ -5,15 +5,48 @@ const ROOT = self.registration.scope;
 const PREFIX = 'pocket-ledger-shell:' + ROOT + ':';
 const CACHE = PREFIX + BUILD;
 const urls = FILES.map((path) => new URL(path, ROOT).href);
+// Cloudflare redirects /index.html to /. A followed redirect cannot be replayed
+// directly for a navigation request whose redirect mode is "manual".
+function navigationResponse(response) {
+  return response.redirected
+    ? new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      })
+    : response;
+}
+async function repairNavigationCache(cache) {
+  for (const request of await cache.keys()) {
+    if (!request.url.startsWith(ROOT) || !new URL(request.url).pathname.endsWith('.html')) continue;
+    const response = await cache.match(request);
+    if (response?.ok && response.redirected) {
+      // Preserve the exact HTML and headers; remove only redirect metadata.
+      await cache.put(request, navigationResponse(response));
+    }
+  }
+}
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE);
       try {
         await cache.addAll(urls.map((url) => new Request(url, { cache: 'reload' })));
+        await repairNavigationCache(cache);
       } catch (error) {
         await caches.delete(CACHE);
         throw error;
+      }
+      // Heal already-installed shells while this worker waits for activation.
+      // This does not replace their content, reload editing windows, or touch IDB.
+      for (const name of (await caches.keys()).filter(
+        (key) => key.startsWith(PREFIX) && key !== CACHE,
+      )) {
+        try {
+          await repairNavigationCache(await caches.open(name));
+        } catch {
+          /* Retry via the new worker after activation. */
+        }
       }
       // Updates wait for explicit consent or for every old window to close.
     })(),
@@ -42,7 +75,8 @@ self.addEventListener('fetch', (event) => {
           urls.includes(pathname) && pathname.endsWith('.html')
             ? pathname
             : new URL('index.html', ROOT).href;
-        return (await cache.match(page)) || fetch(request);
+        const cached = await cache.match(page);
+        return cached ? navigationResponse(cached) : fetch(request);
       })(),
     );
     return;

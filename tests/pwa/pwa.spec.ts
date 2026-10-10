@@ -23,6 +23,50 @@ test.beforeEach(async ({ request }) => {
   await request.post('/__test__/release?v=a');
 });
 
+test('repairs an installed redirected shell without clearing records or forcing an editing tab to reload', async ({
+  page,
+  context,
+  request,
+}) => {
+  await request.post('/__test__/release?v=legacy');
+  await start(page);
+  await add(page, '31.50', '旧缓存修复后保留');
+  const shell = async () =>
+    page.evaluate(async () => {
+      const name = (await caches.keys()).find((name) => name.includes('legacy-redirect-bug'))!;
+      const cache = await caches.open(name),
+        response = await cache.match(new URL('index.html', location.href).href);
+      return { redirected: response!.redirected, html: await response!.text() };
+    });
+  const before = await shell();
+  expect(before.redirected).toBe(true);
+  const broken = await context.newPage();
+  await expect(broken.goto('/')).rejects.toThrow(/ERR_FAILED/);
+  await nav(page, '记一笔');
+  await page.getByLabel('金额', { exact: true }).fill('88');
+  // Seed another application's cache to ensure repair stays inside our namespace.
+  await page.evaluate(async () => {
+    const other = await caches.open('unrelated-cache');
+    await other.put('/index.html', await fetch('/index.html'));
+  });
+  await request.post('/__test__/release?v=b');
+  await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())!.update());
+  await expect(page.getByRole('button', { name: '更新并重新打开' })).toBeAttached();
+  await expect.poll(async () => (await shell()).redirected).toBe(false);
+  expect((await shell()).html).toBe(before.html);
+  await expect(page.getByLabel('金额', { exact: true })).toHaveValue('88');
+  expect(
+    await page.evaluate(
+      async () => (await (await caches.open('unrelated-cache')).match('/index.html'))!.redirected,
+    ),
+  ).toBe(true);
+  await broken.goto('/');
+  await expect(broken.locator('.entry-row')).toContainText('旧缓存修复后保留');
+  await context.setOffline(true);
+  await broken.reload();
+  await expect(broken.locator('.entry-row')).toContainText('旧缓存修复后保留');
+});
+
 test('initial incomplete download stays unready and recovers after a complete release', async ({
   page,
   request,
